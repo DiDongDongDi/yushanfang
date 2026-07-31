@@ -49,6 +49,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { aiRecommend, aiRecommendStream, getDishes } from '@/api'
 
 const keyword = ref('')
@@ -137,6 +138,10 @@ function removeDish(idx) {
   cart.value.splice(idx, 1)
   uni.setStorageSync('cart', cart.value)
 }
+
+onShow(() => {
+  cart.value = uni.getStorageSync('cart') || []
+})
 
 onMounted(() => {
   loadDishes()
