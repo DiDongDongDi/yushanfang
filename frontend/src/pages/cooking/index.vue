@@ -5,7 +5,7 @@
       <view class="header-right">
         <button class="ai-optimize-btn" @click="summaryPlan" :loading="summarizing">
           <text class="btn-icon">✨</text>
-          <text>AI 生成菜谱</text>
+          <text>AI 汇总生成所有菜品的步骤</text>
         </button>
       </view>
     </view>

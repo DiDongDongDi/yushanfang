@@ -8,7 +8,7 @@
     <view class="section">
       <view class="section-title">🔥 AI 推荐</view>
       <view v-if="recommendList.length" class="recommend-list">
-        <view v-for="(item, idx) in recommendList" :key="idx" class="recommend-item" @click="addDish(item.name)">
+        <view v-for="(item, idx) in recommendList" :key="idx" class="recommend-item" @click="goDishByName(item.name)">
           <text class="name">{{ item.name }}</text>
           <text class="desc">{{ item.desc }}</text>
         </view>
@@ -87,6 +87,10 @@ function addDish(name) {
 
 function goDish(id) {
   uni.navigateTo({ url: `/pages/dish/index?id=${id}` })
+}
+
+function goDishByName(name) {
+  uni.navigateTo({ url: `/pages/dish/index?name=${encodeURIComponent(name)}` })
 }
 
 function goCooking() {
