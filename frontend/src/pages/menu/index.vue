@@ -29,7 +29,12 @@
     </view>
 
     <view class="bottom-bar" v-if="cart.length > 0">
-      <text class="cart-count">已选 {{ cart.length }} 道菜</text>
+      <view class="cart-list">
+        <view v-for="(item, idx) in cart" :key="idx" class="cart-item">
+          <text class="cart-name">{{ item.name }}</text>
+          <text class="cart-remove" @click="removeDish(idx)">×</text>
+        </view>
+      </view>
       <button class="btn-primary" @click="goCooking">去做饭 ›</button>
     </view>
   </view>
@@ -88,6 +93,11 @@ function goCooking() {
   uni.navigateTo({ url: '/pages/cooking/index' })
 }
 
+function removeDish(idx) {
+  cart.value.splice(idx, 1)
+  uni.setStorageSync('cart', cart.value)
+}
+
 onMounted(() => {
   loadDishes()
 })
@@ -108,8 +118,11 @@ onMounted(() => {
 .dish-info .desc { display: block; color: #999; font-size: 24rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .add-btn { color: #e74c3c; font-size: 40rpx; width: 60rpx; height: 60rpx; display: flex; align-items: center; justify-content: center; }
 .empty { color: #999; font-size: 26rpx; }
-.bottom-bar { position: fixed; bottom: var(--window-bottom); left: 0; right: 0; background: #fff; padding: 20rpx 30rpx; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 -2rpx 10rpx rgba(0,0,0,0.05); z-index: 100; }
-.cart-count { color: #e74c3c; font-size: 28rpx; }
+.bottom-bar { position: fixed; bottom: var(--window-bottom); left: 0; right: 0; background: #fff; padding: 20rpx 30rpx; display: flex; align-items: center; box-shadow: 0 -2rpx 10rpx rgba(0,0,0,0.05); z-index: 100; }
+.cart-list { flex: 1; display: flex; flex-wrap: wrap; gap: 12rpx; margin-right: 20rpx; }
+.cart-item { background: #fff3f0; color: #e74c3c; padding: 8rpx 16rpx; border-radius: 8rpx; font-size: 24rpx; display: flex; align-items: center; gap: 8rpx; }
+.cart-name { max-width: 120rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cart-remove { font-size: 32rpx; color: #e74c3c; }
 .btn-primary { background: #e74c3c; color: #fff; border-radius: 12rpx; font-size: 28rpx; height: 88rpx; display: flex; align-items: center; justify-content: center; padding: 0 30rpx; }
 .ai-btn { background: #e74c3c; color: #fff; border-radius: 12rpx; font-size: 26rpx; height: 88rpx; display: flex; align-items: center; justify-content: center; }
 </style>
