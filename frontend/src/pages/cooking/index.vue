@@ -11,20 +11,52 @@
     </view>
 
     <view class="dishes-list">
-      <view v-for="(dish, idx) in cart" :key="idx" class="dish-tag">
+      <view v-for="(dish, idx) in cart" :key="idx" class="dish-tag" @click="showDishDetail(idx)">
         <text>{{ dish.name }}</text>
-        <text class="remove" @click="removeDish(idx)">×</text>
+        <text v-if="dish.recipe" class="tag-status">✓</text>
+        <text v-else class="tag-status no">未生成</text>
+        <text class="remove" @click.stop="removeDish(idx)">×</text>
       </view>
       <text v-if="cart.length === 0" class="empty">暂无菜品，去点菜吧</text>
     </view>
 
-    <!-- 已选菜品列表 -->
-    <view v-if="cart.length > 0" class="dish-list">
-      <view v-for="(dish, idx) in cart" :key="idx" class="dish-item">
-        <text class="dish-name">{{ dish.name }}</text>
-        <text v-if="dish.recipe" class="gen-done">✓ 已生成菜谱</text>
-        <text v-else class="gen-notice">未生成菜谱</text>
-        <text class="remove" @click="removeDish(idx)">×</text>
+    <!-- 点击标签查看的菜谱详情 -->
+    <view v-if="selectedDish" class="dish-detail">
+      <view class="detail-header">
+        <text class="detail-title">{{ selectedDish.name }} 的菜谱</text>
+        <text class="detail-close" @click="selectedDish = null">×</text>
+      </view>
+      <template v-if="selectedDish.recipe">
+        <view class="section">
+          <view class="section-title">🛒 需要买的菜</view>
+          <view class="checklist">
+            <view v-for="(item, i) in detailBuyList" :key="i" class="check-item" @click="detailBuyDone[i] = !detailBuyDone[i]">
+              <view class="step-check" :class="{ done: detailBuyDone[i] }">✓</view>
+              <text class="step-text" :class="{ done: detailBuyDone[i] }">{{ item }}</text>
+            </view>
+          </view>
+        </view>
+        <view class="section">
+          <view class="section-title">🔪 备菜步骤</view>
+          <view class="checklist">
+            <view v-for="(step, i) in detailPrepList" :key="i" class="check-item" @click="detailPrepDone[i] = !detailPrepDone[i]">
+              <view class="step-check" :class="{ done: detailPrepDone[i] }">✓</view>
+              <text class="step-text" :class="{ done: detailPrepDone[i] }">{{ step }}</text>
+            </view>
+          </view>
+        </view>
+        <view class="section">
+          <view class="section-title">🍳 烹饪做法</view>
+          <view class="checklist">
+            <view v-for="(step, i) in detailCookList" :key="i" class="check-item" @click="detailCookDone[i] = !detailCookDone[i]">
+              <view class="step-check" :class="{ done: detailCookDone[i] }">✓</view>
+              <text class="step-text" :class="{ done: detailCookDone[i] }">{{ step }}</text>
+            </view>
+          </view>
+        </view>
+      </template>
+      <view v-else class="section">
+        <text class="section-content">该菜品尚未生成菜谱</text>
       </view>
     </view>
 
@@ -91,6 +123,21 @@ const buyDone = ref({})
 const prepDone = ref({})
 const cookDone = ref({})
 const timers = ref({})
+const selectedDish = ref(null)
+const detailBuyDone = ref({})
+const detailPrepDone = ref({})
+const detailCookDone = ref({})
+
+const detailBuyList = computed(() => parseBuyList(selectedDish.value?.recipe?.buy_list || ''))
+const detailPrepList = computed(() => (selectedDish.value?.recipe?.prep_steps || '').split('\n').filter(Boolean).map(s => s.replace(/^[\d、.,\s-]+/, '').trim()).filter(Boolean))
+const detailCookList = computed(() => parseCookSteps(selectedDish.value?.recipe?.cook_steps || '').map(s => s.text))
+
+function showDishDetail(idx) {
+  selectedDish.value = cart.value[idx]
+  detailBuyDone.value = {}
+  detailPrepDone.value = {}
+  detailCookDone.value = {}
+}
 
 const summaryBuyList = computed(() => parseBuyList(summary.value?.buy_list || ''))
 const summaryPrepList = computed(() => (summary.value?.prep_steps || '').split('\n').filter(Boolean))
@@ -258,15 +305,18 @@ async function finishCooking() {
 .ai-optimize-btn { background: linear-gradient(135deg, #e74c3c, #ff6b6b); color: #fff; border-radius: 40rpx; font-size: 26rpx; padding: 12rpx 28rpx; display: flex; align-items: center; gap: 8rpx; box-shadow: 0 4rpx 12rpx rgba(231, 76, 60, 0.3); border: none; }
 .btn-icon { font-size: 28rpx; }
 .dishes-list { display: flex; flex-wrap: wrap; gap: 16rpx; margin-bottom: 30rpx; }
-.dish-tag { background: #fff3f0; color: #e74c3c; padding: 10rpx 20rpx; border-radius: 8rpx; font-size: 26rpx; }
-.remove { margin-left: 10rpx; color: #999; }
+.dish-tag { background: #fff3f0; color: #e74c3c; padding: 10rpx 20rpx; border-radius: 8rpx; font-size: 26rpx; display: flex; align-items: center; gap: 8rpx; }
+.tag-status { color: #27ae60; font-size: 22rpx; }
+.tag-status.no { color: #999; font-size: 22rpx; }
+.remove { margin-left: 4rpx; color: #999; }
 
-.dish-list { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 30rpx; }
-.dish-item { display: flex; align-items: center; padding: 16rpx 0; border-bottom: 1rpx solid #f5f5f5; }
-.dish-item:last-child { border-bottom: none; }
-.dish-name { flex: 1; font-size: 30rpx; }
-.gen-done { color: #27ae60; font-size: 24rpx; margin-right: 16rpx; }
-.gen-notice { color: #e74c3c; font-size: 24rpx; margin-right: 16rpx; }
+.dish-detail { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 30rpx; }
+.detail-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20rpx; }
+.detail-title { font-size: 32rpx; font-weight: bold; }
+.detail-close { font-size: 40rpx; color: #999; padding: 0 10rpx; }
+.checklist { padding: 0; }
+.check-item { display: flex; align-items: flex-start; padding: 16rpx 0; border-bottom: 1rpx solid #f5f5f5; }
+.check-item:last-child { border-bottom: none; }
 
 .summary { margin-bottom: 30rpx; }
 .summary-banner { background: linear-gradient(135deg, #e74c3c, #ff6b6b); color: #fff; text-align: center; padding: 16rpx; border-radius: 12rpx; font-size: 28rpx; font-weight: bold; margin-bottom: 20rpx; }

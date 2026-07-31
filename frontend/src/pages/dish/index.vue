@@ -110,6 +110,7 @@ async function generateRecipe() {
         recipe.value = { buy_list: result.buy_list || '', prep_steps: result.prep_steps || '', cook_steps: result.cook_steps || '' }
       }
       generating.value = false
+      saveToDb()
     }
   ).catch(e => {
     console.error('AI生成失败:', e)
@@ -129,6 +130,7 @@ async function generateRecipe() {
     recipe.value = { buy_list: res.result, prep_steps: '', cook_steps: '' }
   }
   generating.value = false
+  saveToDb()
   // #endif
 }
 
@@ -162,7 +164,7 @@ function parseStreamingRecipe(text) {
   }
 }
 
-function addToCart() {
+async function addToCart() {
   let cart = uni.getStorageSync('cart') || []
   const name = dishName.value
   const item = { name, recipe: recipe.value }
@@ -181,6 +183,26 @@ function addToCart() {
   setTimeout(() => {
     uni.switchTab({ url: '/pages/menu/index' })
   }, 800)
+}
+
+async function saveToDb() {
+  // 将菜谱保存到数据库
+  try {
+    const { getDishes, updateDish } = await import('@/api')
+    const existing = await getDishes()
+    const match = existing.find((d) => d.name === dishName.value)
+    if (match) {
+      await updateDish(match.id, { recipe_json: JSON.stringify(recipe.value) })
+    } else {
+      await createDish({
+        name: dishName.value,
+        description: JSON.stringify(recipe.value),
+        recipe_json: JSON.stringify(recipe.value)
+      })
+    }
+  } catch (e) {
+    console.error('保存菜谱失败:', e)
+  }
 }
 
 async function saveToMyDishes() {
