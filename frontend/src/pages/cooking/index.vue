@@ -2,7 +2,12 @@
   <view class="container">
     <view class="header">
       <text class="title">本次做饭</text>
-      <button class="ai-optimize-btn" @click="optimizePlan" :loading="optimizing" size="mini">AI 优化流程</button>
+      <view class="header-right">
+        <button class="ai-optimize-btn" @click="optimizePlan" :loading="optimizing">
+          <text class="btn-icon">✨</text>
+          <text>AI 优化流程</text>
+        </button>
+      </view>
     </view>
 
     <view class="dishes-list">
@@ -139,7 +144,10 @@ async function finishCooking() {
 <style scoped>
 .container { padding: 30rpx; padding-bottom: 160rpx; }
 .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30rpx; }
-.title { font-size: 40rpx; font-weight: bold; }
+.title { font-size: 40rpx; font-weight: bold; flex: 1; }
+.header-right { display: flex; align-items: center; }
+.ai-optimize-btn { background: linear-gradient(135deg, #e74c3c, #ff6b6b); color: #fff; border-radius: 40rpx; font-size: 26rpx; padding: 12rpx 28rpx; display: flex; align-items: center; gap: 8rpx; box-shadow: 0 4rpx 12rpx rgba(231, 76, 60, 0.3); border: none; }
+.btn-icon { font-size: 28rpx; }
 .dishes-list { display: flex; flex-wrap: wrap; gap: 16rpx; margin-bottom: 30rpx; }
 .dish-tag { background: #fff3f0; color: #e74c3c; padding: 10rpx 20rpx; border-radius: 8rpx; font-size: 26rpx; }
 .remove { margin-left: 10rpx; color: #999; }
