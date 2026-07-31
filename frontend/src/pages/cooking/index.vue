@@ -13,8 +13,6 @@
     <view class="dishes-list">
       <view v-for="(dish, idx) in cart" :key="idx" class="dish-tag" @click="showDishDetail(idx)">
         <text>{{ dish.name }}</text>
-        <text v-if="dish.recipe" class="tag-status">✓</text>
-        <text v-else class="tag-status no">未生成</text>
         <text class="remove" @click.stop="removeDish(idx)">×</text>
       </view>
       <text v-if="cart.length === 0" class="empty">暂无菜品，去点菜吧</text>
@@ -306,8 +304,6 @@ async function finishCooking() {
 .btn-icon { font-size: 28rpx; }
 .dishes-list { display: flex; flex-wrap: wrap; gap: 16rpx; margin-bottom: 30rpx; }
 .dish-tag { background: #fff3f0; color: #e74c3c; padding: 10rpx 20rpx; border-radius: 8rpx; font-size: 26rpx; display: flex; align-items: center; gap: 8rpx; }
-.tag-status { color: #27ae60; font-size: 22rpx; }
-.tag-status.no { color: #999; font-size: 22rpx; }
 .remove { margin-left: 4rpx; color: #999; }
 
 .dish-detail { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 30rpx; }
