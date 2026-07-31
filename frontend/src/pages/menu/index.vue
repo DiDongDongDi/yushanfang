@@ -103,7 +103,12 @@ async function getRecommend() {
 
 async function loadDishes() {
   const res = await getDishes()
-  dishes.value = res || []
+  const seen = new Set()
+  dishes.value = (res || []).filter((d) => {
+    if (seen.has(d.name)) return false
+    seen.add(d.name)
+    return true
+  })
 }
 
 // 从流式文本中实时解析推荐菜品
