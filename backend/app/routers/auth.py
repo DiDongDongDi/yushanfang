@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import create_access_token, get_password_hash
+from app.core.config import settings
 from app.models.user import User
 from app.schemas.user import (
     UserCreate, WechatLogin, UserInDB, Token, SendCodeRequest
@@ -19,7 +20,16 @@ def send_code(req: SendCodeRequest):
     import random
     code = str(random.randint(100000, 999999))
     fake_code_store[req.phone] = code
-    print(f"[模拟] 发送验证码到 {req.phone}: {code}")
+    
+    # 开发模式：直接返回验证码（方便测试）
+    if settings.ENV == "development":
+        print(f"[开发模式] 验证码 {code} 发送到 {req.phone}")
+        return {"msg": "验证码已发送", "code": code}
+    
+    # 生产模式：尝试发送短信
+    # TODO: 接入腾讯云短信服务
+    # 如果未配置短信服务，仍然返回验证码（仅用于测试）
+    print(f"[生产模式] 验证码 {code} 发送到 {req.phone}（未配置短信服务）")
     return {"msg": "验证码已发送"}
 
 
