@@ -53,7 +53,7 @@ export const aiOptimizePlanStream = (dishes, plans, onChunk, onDone) => {
 function streamRequest(url, data, onChunk, onDone) {
   const token = uni.getStorageSync('token')
   // #ifdef H5
-  const baseURL = ''
+  const baseURL = '/api'
   return fetch(baseURL + url, {
     method: 'POST',
     headers: {
