@@ -32,17 +32,53 @@ def ai_recommend(req: RecommendRequest, db: Session = Depends(get_db), current_u
     return result
 
 
-@router.post("/generate-recipe", summary="AI生成菜谱（三部分）")
-def ai_generate_recipe(req: GenerateRecipeRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    from app.services.ai_service import ai_chat
+@router.post("/generate-recipe/stream", summary="AI生成菜谱（流式）")
+def ai_generate_recipe_stream(req: GenerateRecipeRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    from app.services.ai_service import ai_chat_stream
     prompt = f"""你是一个专业厨师。请为"{req.dish_name}"这道菜生成三部分内容，返回JSON格式：
 {{
   "buy_list": "需要购买的食材清单，每行一个",
   "prep_steps": "备菜步骤，每行一个步骤",
   "cook_steps": "烹饪做法，每行一个步骤，每个步骤带预计时间（分钟）"
 }}"""
-    result = ai_chat(prompt, db=db)
-    return result
+
+    def generate():
+        yield "data: {\"type\":\"start\"}\n\n"
+        full_content = ""
+        for chunk in ai_chat_stream(prompt, db=db):
+            full_content += chunk
+            escaped = chunk.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")
+            yield f"data: {{\"type\":\"chunk\",\"content\":\"{escaped}\"}}\n\n"
+        import re
+        json_match = re.search(r"\{.*\}", full_content, re.DOTALL)
+        if json_match:
+            yield f"data: {{\"type\":\"done\",\"result\":{json_match.group()}}}\n\n"
+        else:
+            yield f"data: {{\"type\":\"done\",\"result\":{{\"result\":\"{full_content}\"}}}}\n\n"
+
+    return StreamingResponse(generate(), media_type="text/event-stream")
+
+
+@router.post("/recommend/stream", summary="AI推荐今日菜品（流式）")
+def ai_recommend_stream(req: RecommendRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    from app.services.ai_service import ai_chat_stream
+    prompt = f"你是一个美食推荐专家。用户偏好：{req.preference}。请推荐3道适合今天做的菜，每道菜用一句话描述，返回JSON格式：{{\"dishes\": [{{\"name\": \"菜名\", \"desc\": \"描述\"}}]}}"
+
+    def generate():
+        yield "data: {\"type\":\"start\"}\n\n"
+        full_content = ""
+        for chunk in ai_chat_stream(prompt, db=db):
+            full_content += chunk
+            escaped = chunk.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")
+            yield f"data: {{\"type\":\"chunk\",\"content\":\"{escaped}\"}}\n\n"
+        import re
+        json_match = re.search(r"\{.*\}", full_content, re.DOTALL)
+        if json_match:
+            yield f"data: {{\"type\":\"done\",\"result\":{json_match.group()}}}\n\n"
+        else:
+            yield f"data: {{\"type\":\"done\",\"result\":{{\"result\":\"{full_content}\"}}}}\n\n"
+
+    return StreamingResponse(generate(), media_type="text/event-stream")
 
 
 @router.post("/optimize-plan", summary="AI整合多菜流程")

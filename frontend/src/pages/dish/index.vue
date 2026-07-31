@@ -14,6 +14,7 @@
 
     <view v-if="generating" class="loading-tip">
       <text>AI 正在生成菜谱，请稍候...</text>
+      <text v-if="streamingText" class="streaming-text">{{ streamingText }}</text>
     </view>
 
     <template v-if="recipe">
@@ -45,13 +46,14 @@
 <script setup>
 import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { aiGenerateRecipe, createDish } from '@/api'
+import { aiGenerateRecipe, aiGenerateRecipeStream, createDish } from '@/api'
 
 const dishName = ref('')
 const dishId = ref(null)
 const dish = ref({})
 const recipe = ref(null)
 const generating = ref(false)
+const streamingText = ref('')
 
 onLoad((options) => {
   dishName.value = decodeURIComponent(options.name || '')
@@ -73,6 +75,22 @@ async function getDishInfo() {
 async function generateRecipe() {
   generating.value = true
   recipe.value = null
+  streamingText.value = ''
+  // #ifdef H5
+  aiGenerateRecipeStream(dishName.value,
+    (chunk) => {
+      streamingText.value += chunk
+      // 实时解析预览
+      recipe.value = parseStreamingRecipe(streamingText.value)
+      recipe.value._streaming = true
+    },
+    (result) => {
+      recipe.value = result || {}
+      generating.value = false
+    }
+  )
+  // #endif
+  // #ifndef H5
   const res = await aiGenerateRecipe(dishName.value)
   if (res.buy_list || res.prep_steps || res.cook_steps) {
     recipe.value = {
@@ -82,14 +100,22 @@ async function generateRecipe() {
     }
   } else if (res.result) {
     recipe.value = { buy_list: res.result, prep_steps: '', cook_steps: '' }
-  } else if (res.error) {
-    recipe.value = {
-      buy_list: '（AI 服务未配置，请联系管理员）',
-      prep_steps: '',
-      cook_steps: ''
-    }
   }
   generating.value = false
+  // #endif
+}
+
+// 从流式文本中实时解析菜谱三部分
+function parseStreamingRecipe(text) {
+  const buyMatch = text.match(/"buy_list"\s*:\s*"([^"]*)"/s)
+  const prepMatch = text.match(/"prep_steps"\s*:\s*"([^"]*)"/s)
+  const cookMatch = text.match(/"cook_steps"\s*:\s*"([^"]*)"/s)
+  return {
+    buy_list: buyMatch ? buyMatch[1].replace(/\\n/g, '\n') : '',
+    prep_steps: prepMatch ? prepMatch[1].replace(/\\n/g, '\n') : '',
+    cook_steps: cookMatch ? cookMatch[1].replace(/\\n/g, '\n') : '',
+    _streaming: true
+  }
 }
 
 function addToCart() {

@@ -7,6 +7,9 @@
 
     <view class="section">
       <view class="section-title">🔥 AI 推荐</view>
+      <view v-if="recommendStreamText && loading" class="streaming-preview">
+        <text class="streaming-text">{{ recommendStreamText }}</text>
+      </view>
       <view v-if="recommendList.length" class="recommend-list">
         <view v-for="(item, idx) in recommendList" :key="idx" class="recommend-item" @click="goDishByName(item.name)">
           <text class="name">{{ item.name }}</text>
@@ -23,7 +26,6 @@
           <text class="name">{{ dish.name }}</text>
           <text v-if="dish.description" class="desc">{{ dish.description }}</text>
         </view>
-        <text class="add-btn" @click.stop="addDish(dish.name)">＋</text>
       </view>
       <text v-if="!dishes.length" class="empty">暂无历史菜品</text>
     </view>
@@ -42,16 +44,36 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { aiRecommend, getDishes, aiGenerateRecipe } from '@/api'
+import { aiRecommend, aiRecommendStream, getDishes } from '@/api'
 
 const keyword = ref('')
 const recommendList = ref([])
 const loading = ref(false)
+const recommendStreamText = ref('')
 const dishes = ref([])
 const cart = ref(uni.getStorageSync('cart') || [])
 
 async function getRecommend() {
   loading.value = true
+  recommendList.value = []
+  recommendStreamText.value = ''
+  // #ifdef H5
+  aiRecommendStream('',
+    (chunk) => {
+      recommendStreamText.value += chunk
+    },
+    (result) => {
+      if (result && result.dishes) {
+        recommendList.value = result.dishes
+      } else if (result && result.result) {
+        recommendList.value = [{ name: result.result, desc: '' }]
+      }
+      recommendStreamText.value = ''
+      loading.value = false
+    }
+  )
+  // #endif
+  // #ifndef H5
   const res = await aiRecommend('')
   if (res.dishes) {
     recommendList.value = res.dishes
@@ -59,6 +81,7 @@ async function getRecommend() {
     recommendList.value = [{ name: res.result, desc: '' }]
   }
   loading.value = false
+  // #endif
 }
 
 async function loadDishes() {
@@ -71,32 +94,7 @@ function searchDish() {
     uni.showToast({ title: '请输入菜名', icon: 'none' })
     return
   }
-  addDish(keyword.value)
-}
-
-async function addDish(name) {
-  if (!name) return
-  if (cart.value.find((d) => d.name === name)) {
-    uni.showToast({ title: '已在列表中', icon: 'none' })
-    return
-  }
-  uni.showLoading({ title: 'AI 生成菜谱中...' })
-  try {
-    const res = await aiGenerateRecipe(name)
-    uni.hideLoading()
-    let recipe = null
-    if (res.buy_list || res.prep_steps || res.cook_steps) {
-      recipe = { buy_list: res.buy_list || '', prep_steps: res.prep_steps || '', cook_steps: res.cook_steps || '' }
-    }
-    cart.value.push({ name, recipe })
-    uni.setStorageSync('cart', cart.value)
-    uni.showToast({ title: `已添加「${name}」并生成菜谱`, icon: 'success' })
-  } catch (e) {
-    uni.hideLoading()
-    cart.value.push({ name })
-    uni.setStorageSync('cart', cart.value)
-    uni.showToast({ title: `已添加「${name}」（菜谱生成失败）`, icon: 'none' })
-  }
+  goDishByName(keyword.value)
 }
 
 function goDish(id) {
@@ -136,6 +134,8 @@ onMounted(() => {
 .dish-info .desc { display: block; color: #999; font-size: 24rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .add-btn { color: #e74c3c; font-size: 40rpx; width: 60rpx; height: 60rpx; display: flex; align-items: center; justify-content: center; }
 .empty { color: #999; font-size: 26rpx; }
+.streaming-preview { background: #fafafa; border-radius: 12rpx; padding: 20rpx; margin-bottom: 20rpx; }
+.streaming-text { font-size: 24rpx; color: #666; white-space: pre-wrap; line-height: 1.7; }
 .bottom-bar { position: fixed; bottom: var(--window-bottom); left: 0; right: 0; background: #fff; padding: 20rpx 30rpx; display: flex; align-items: center; box-shadow: 0 -2rpx 10rpx rgba(0,0,0,0.05); z-index: 100; }
 .cart-list { flex: 1; display: flex; flex-wrap: wrap; gap: 12rpx; margin-right: 20rpx; }
 .cart-item { background: #fff3f0; color: #e74c3c; padding: 8rpx 16rpx; border-radius: 8rpx; font-size: 24rpx; display: flex; align-items: center; gap: 8rpx; }

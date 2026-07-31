@@ -37,8 +37,61 @@ export const deleteDish = (id) => request.delete(`/dishes/${id}`)
 
 // AI
 export const aiRecommend = (preference) => request.post('/ai/recommend', { preference })
+export const aiRecommendStream = (preference, onChunk, onDone) => {
+  return streamRequest('/ai/recommend/stream', { preference }, onChunk, onDone)
+}
 export const aiGenerateRecipe = (dishName) => request.post('/ai/generate-recipe', { dish_name: dishName })
+export const aiGenerateRecipeStream = (dishName, onChunk, onDone) => {
+  return streamRequest('/ai/generate-recipe/stream', { dish_name: dishName }, onChunk, onDone)
+}
 export const aiOptimizePlan = (dishes, plans) => request.post('/ai/optimize-plan', { dishes, plans })
+export const aiOptimizePlanStream = (dishes, plans, onChunk, onDone) => {
+  return streamRequest('/ai/optimize-plan/stream', { dishes, plans }, onChunk, onDone)
+}
+
+// 流式请求封装
+function streamRequest(url, data, onChunk, onDone) {
+  const token = uni.getStorageSync('token')
+  // #ifdef H5
+  return fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify(data)
+  }).then(resp => {
+    if (!resp.ok) throw new Error('请求失败')
+    const reader = resp.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    function read() {
+      return reader.read().then(({ done, value }) => {
+        if (done) {
+          onDone && onDone()
+          return
+        }
+        buffer += decoder.decode(value, { stream: true })
+        let idx
+        while ((idx = buffer.indexOf('\n\n')) !== -1) {
+          const event = buffer.slice(0, idx)
+          buffer = buffer.slice(idx + 2)
+          if (event.startsWith('data:')) {
+            const data = event.slice(5).trim()
+            try {
+              const json = JSON.parse(data)
+              if (json.type === 'chunk' && onChunk) onChunk(json.content)
+              if (json.type === 'done' && onDone) onDone(json.result)
+            } catch (e) {}
+          }
+        }
+        return read()
+      })
+    }
+    return read()
+  })
+  // #endif
+}
 
 // 烹饪记录
 export const createRecord = (dishIds) => request.post('/cooking-records', { dish_ids: dishIds })
