@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.database import engine, Base
-from app.models import User, Dish, CookingRecord, CookingStep
-from app.routers import auth, dishes, ai, cooking, users
+from app.models import User, Dish, CookingRecord, CookingStep, AIConfig
+from app.routers import auth, dishes, ai, cooking, users, settings
 
 app = FastAPI(title="御膳房 API", version="1.0.0")
 
@@ -19,6 +19,7 @@ app.include_router(dishes.router, prefix="/api")
 app.include_router(ai.router, prefix="/api")
 app.include_router(cooking.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
+app.include_router(settings.router, prefix="/api")
 
 
 @app.on_event("startup")

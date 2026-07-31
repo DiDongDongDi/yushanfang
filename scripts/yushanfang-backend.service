@@ -1,0 +1,19 @@
+[Unit]
+Description=御膳房后端服务
+After=network.target mysql.service
+Wants=mysql.service
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/yushanfang/backend
+Environment="PATH=/home/ubuntu/yushanfang/backend/.venv/bin"
+ExecStartPre=/bin/bash -c 'cd /home/ubuntu/yushanfang && bash scripts/init_db.sh'
+ExecStart=/home/ubuntu/yushanfang/backend/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

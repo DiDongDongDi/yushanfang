@@ -26,7 +26,7 @@ class OptimizePlanRequest(BaseModel):
 def ai_recommend(req: RecommendRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     from app.services.ai_service import ai_chat
     prompt = f"你是一个美食推荐专家。用户偏好：{req.preference}。请推荐3道适合今天做的菜，每道菜用一句话描述，返回JSON格式：{{\"dishes\": [{{\"name\": \"菜名\", \"desc\": \"描述\"}}]}}"
-    result = ai_chat(prompt)
+    result = ai_chat(prompt, db=db)
     return result
 
 
@@ -39,7 +39,7 @@ def ai_generate_recipe(req: GenerateRecipeRequest, db: Session = Depends(get_db)
   "prep_steps": "备菜步骤，每行一个步骤",
   "cook_steps": "烹饪做法，每行一个步骤，每个步骤带预计时间（分钟）"
 }}"""
-    result = ai_chat(prompt)
+    result = ai_chat(prompt, db=db)
     return result
 
 
@@ -57,5 +57,5 @@ def ai_optimize_plan(req: OptimizePlanRequest, db: Session = Depends(get_db), cu
   "prep_steps": "整合优化后的备菜步骤",
   "cook_steps": "整合优化后的烹饪步骤（带时间）"
 }}"""
-    result = ai_chat(prompt)
+    result = ai_chat(prompt, db=db)
     return result

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <script>
@@ -9,12 +9,22 @@
         '<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0' +
         (coverSupport ? ', viewport-fit=cover' : '') + '" />')
     </script>
-    <title></title>
+    <title>御膳房</title>
+    <link rel="manifest" href="/static/manifest.webmanifest" />
+    <meta name="theme-color" content="#e74c3c" />
+    <link rel="apple-touch-icon" href="/static/icon-192.png" />
     <!--preload-links-->
     <!--app-context-->
   </head>
   <body>
     <div id="app"><!--app-html--></div>
     <script type="module" src="/src/main.ts"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/static/sw.js').catch(err => console.log('SW registration failed:', err))
+        })
+      }
+    </script>
   </body>
 </html>

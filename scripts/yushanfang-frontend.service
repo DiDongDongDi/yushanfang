@@ -1,0 +1,17 @@
+[Unit]
+Description=御膳房前端服务
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/yushanfang/frontend
+ExecStartPre=/bin/bash -c 'cd /home/ubuntu/yushanfang/frontend && npm install --no-audit --no-fund'
+ExecStart=/usr/bin/npm run dev:h5
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

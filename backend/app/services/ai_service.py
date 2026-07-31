@@ -2,25 +2,45 @@ import json
 import re
 import requests
 from app.core.config import settings
+from app.models.ai_config import AIConfig
 
 
-def ai_chat(prompt: str) -> dict:
-    if not settings.DASHSCOPE_API_KEY:
+def get_ai_config(db=None):
+    """获取 AI 配置：优先数据库，其次环境变量"""
+    if db:
+        config = db.query(AIConfig).first()
+        if config and config.api_key:
+            return {
+                "base_url": config.base_url or settings.AI_BASE_URL,
+                "api_key": config.api_key,
+                "model": config.model or settings.AI_MODEL,
+            }
+    return {
+        "base_url": settings.AI_BASE_URL,
+        "api_key": settings.AI_API_KEY,
+        "model": settings.AI_MODEL,
+    }
+
+
+def ai_chat(prompt: str, db=None) -> dict:
+    config = get_ai_config(db)
+
+    if not config["api_key"]:
         # 模拟返回，方便开发测试
-        return {"result": "[模拟AI返回] 请在 .env 中配置 DASHSCOPE_API_KEY"}
+        return {"result": "[模拟AI返回] 请配置 AI API Key"}
 
     headers = {
-        "Authorization": f"Bearer {settings.DASHSCOPE_API_KEY}",
+        "Authorization": f"Bearer {config['api_key']}",
         "Content-Type": "application/json",
     }
     payload = {
-        "model": settings.AI_MODEL,
+        "model": config["model"],
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.7,
     }
     try:
         resp = requests.post(
-            f"{settings.DASHSCOPE_BASE_URL}/chat/completions",
+            f"{config['base_url']}/chat/completions",
             headers=headers,
             json=payload,
             timeout=30,

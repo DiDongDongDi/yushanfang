@@ -7,8 +7,8 @@ class Settings(BaseSettings):
 
     MYSQL_HOST: str = "localhost"
     MYSQL_PORT: int = 3306
-    MYSQL_USER: str = "root"
-    MYSQL_PASSWORD: str = "root"
+    MYSQL_USER: str = "yushanfang"
+    MYSQL_PASSWORD: str = "yushanfang123"
     MYSQL_DB: str = "yushanfang"
     SQLALCHEMY_DATABASE_URI: str | None = None
 
@@ -16,9 +16,14 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
 
-    DASHSCOPE_API_KEY: str = ""
-    DASHSCOPE_BASE_URL: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    # 自定义 AI 配置（OpenAI 兼容接口）
+    # 任何支持 OpenAI 格式的 AI 服务都可以配置
+    AI_BASE_URL: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    AI_API_KEY: str = ""
     AI_MODEL: str = "qwen-turbo"
+
+    # 运行环境: development / production
+    ENV: str = "development"
 
     @property
     def DATABASE_URI(self) -> str:

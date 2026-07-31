@@ -1,0 +1,21 @@
+{
+  "name": "御膳房",
+  "short_name": "御膳房",
+  "description": "智能点菜小程序 - AI推荐今日菜品、智能整合多菜烹饪流程",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#e74c3c",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
