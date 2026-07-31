@@ -18,42 +18,13 @@
       <text v-if="cart.length === 0" class="empty">暂无菜品，去点菜吧</text>
     </view>
 
-    <!-- 每道菜单独生成菜谱 -->
-    <view v-if="cart.length > 0" class="dish-cards">
-      <view v-for="(dish, idx) in cart" :key="idx" class="dish-card">
-        <view class="dish-card-header">
-          <text class="dish-name">{{ dish.name }}</text>
-          <button v-if="!dish.recipe" class="gen-btn" :loading="generatingIdx === idx" @click="generateOne(idx)">
-            AI 生成菜谱
-          </button>
-          <text v-else class="gen-done">✓ 已生成</text>
-        </view>
-        <view v-if="dish.recipe" class="dish-recipe">
-          <view class="recipe-section">
-            <text class="recipe-title">🛒 买菜清单</text>
-            <view v-for="(item, sidx) in parseBuyList(dish.recipe.buy_list)" :key="sidx" class="step-item" @click="toggleDishBuy(idx, sidx)">
-              <view class="step-check" :class="{ done: dish.buyDone?.[sidx] }">✓</view>
-              <text class="step-text" :class="{ done: dish.buyDone?.[sidx] }">{{ item }}</text>
-            </view>
-            <text v-if="!dish.recipe.buy_list" class="recipe-content">暂无</text>
-          </view>
-          <view class="recipe-section">
-            <text class="recipe-title">🔪 备菜步骤</text>
-            <view v-for="(step, sidx) in (dish.recipe.prep_steps || '').split('\n').filter(Boolean)" :key="sidx" class="step-item" @click="toggleDishPrep(idx, sidx)">
-              <view class="step-check" :class="{ done: dish.prepDone?.[sidx] }">✓</view>
-              <text class="step-text" :class="{ done: dish.prepDone?.[sidx] }">{{ step }}</text>
-            </view>
-            <text v-if="!dish.recipe.prep_steps" class="recipe-content">暂无</text>
-          </view>
-          <view class="recipe-section">
-            <text class="recipe-title">🍳 做法</text>
-            <view v-for="(step, sidx) in parseCookSteps(dish.recipe.cook_steps)" :key="sidx" class="step-item" @click="toggleDishCook(idx, sidx)">
-              <view class="step-check" :class="{ done: dish.cookDone?.[sidx] }">✓</view>
-              <text class="step-text" :class="{ done: dish.cookDone?.[sidx] }">{{ step.text }}</text>
-            </view>
-            <text v-if="!dish.recipe.cook_steps" class="recipe-content">暂无</text>
-          </view>
-        </view>
+    <!-- 已选菜品列表 -->
+    <view v-if="cart.length > 0" class="dish-list">
+      <view v-for="(dish, idx) in cart" :key="idx" class="dish-item">
+        <text class="dish-name">{{ dish.name }}</text>
+        <text v-if="dish.recipe" class="gen-done">✓ 已生成菜谱</text>
+        <text v-else class="gen-notice">未生成菜谱</text>
+        <text class="remove" @click="removeDish(idx)">×</text>
       </view>
     </view>
 
@@ -114,7 +85,6 @@ import { ref, onMounted, computed } from 'vue'
 import { aiGenerateRecipe, aiOptimizePlan, createRecord, createSteps } from '@/api'
 
 const cart = ref(uni.getStorageSync('cart') || [])
-const generatingIdx = ref(null)
 const summarizing = ref(false)
 const summary = ref(null)
 const buyDone = ref({})
@@ -144,52 +114,14 @@ function removeDish(idx) {
   uni.setStorageSync('cart', cart.value)
 }
 
-async function generateOne(idx) {
-  const dish = cart.value[idx]
-  generatingIdx.value = idx
-  const res = await aiGenerateRecipe(dish.name)
-  if (res.buy_list || res.prep_steps || res.cook_steps) {
-    dish.recipe = {
-      buy_list: res.buy_list || '',
-      prep_steps: res.prep_steps || '',
-      cook_steps: res.cook_steps || ''
-    }
-    dish.buyDone = {}
-    dish.prepDone = {}
-    dish.cookDone = {}
-  } else if (res.error) {
-    uni.showToast({ title: '生成失败，请检查 AI 配置', icon: 'none' })
-  }
-  cart.value.splice(idx, 1, dish)
-  uni.setStorageSync('cart', cart.value)
-  generatingIdx.value = null
-}
-
-function toggleDishBuy(dishIdx, itemIdx) {
-  const dish = cart.value[dishIdx]
-  if (!dish.buyDone) dish.buyDone = {}
-  dish.buyDone[itemIdx] = !dish.buyDone[itemIdx]
-  uni.setStorageSync('cart', cart.value)
-}
-
-function toggleDishPrep(dishIdx, itemIdx) {
-  const dish = cart.value[dishIdx]
-  if (!dish.prepDone) dish.prepDone = {}
-  dish.prepDone[itemIdx] = !dish.prepDone[itemIdx]
-  uni.setStorageSync('cart', cart.value)
-}
-
-function toggleDishCook(dishIdx, itemIdx) {
-  const dish = cart.value[dishIdx]
-  if (!dish.cookDone) dish.cookDone = {}
-  dish.cookDone[itemIdx] = !dish.cookDone[itemIdx]
-  uni.setStorageSync('cart', cart.value)
-}
-
 async function summaryPlan() {
-  const ready = cart.value.filter((d) => d.recipe)
-  if (!ready.length) {
-    uni.showToast({ title: '请先为每道菜生成菜谱', icon: 'none' })
+  const noRecipe = cart.value.filter((d) => !d.recipe)
+  if (noRecipe.length) {
+    uni.showModal({
+      title: '提示',
+      content: `${noRecipe.map((d) => d.name).join('、')} 未生成菜谱，请先在菜品详情页生成菜谱`,
+      showCancel: false
+    })
     return
   }
   summarizing.value = true
@@ -262,17 +194,12 @@ async function finishCooking() {
 .dish-tag { background: #fff3f0; color: #e74c3c; padding: 10rpx 20rpx; border-radius: 8rpx; font-size: 26rpx; }
 .remove { margin-left: 10rpx; color: #999; }
 
-.dish-cards { display: flex; flex-direction: column; gap: 20rpx; margin-bottom: 30rpx; }
-.dish-card { background: #fff; border-radius: 16rpx; padding: 24rpx; }
-.dish-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16rpx; }
-.dish-name { font-size: 32rpx; font-weight: bold; }
-.gen-btn { background: #e74c3c; color: #fff; border-radius: 30rpx; font-size: 24rpx; padding: 8rpx 24rpx; border: none; }
-.gen-done { color: #27ae60; font-size: 24rpx; }
-.dish-recipe { background: #fafafa; border-radius: 12rpx; padding: 20rpx; }
-.recipe-section { margin-bottom: 16rpx; }
-.recipe-section:last-child { margin-bottom: 0; }
-.recipe-title { font-size: 26rpx; font-weight: bold; color: #e74c3c; display: block; margin-bottom: 8rpx; }
-.recipe-content { font-size: 24rpx; color: #666; white-space: pre-wrap; line-height: 1.7; }
+.dish-list { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 30rpx; }
+.dish-item { display: flex; align-items: center; padding: 16rpx 0; border-bottom: 1rpx solid #f5f5f5; }
+.dish-item:last-child { border-bottom: none; }
+.dish-name { flex: 1; font-size: 30rpx; }
+.gen-done { color: #27ae60; font-size: 24rpx; margin-right: 16rpx; }
+.gen-notice { color: #e74c3c; font-size: 24rpx; margin-right: 16rpx; }
 
 .summary { margin-bottom: 30rpx; }
 .summary-banner { background: linear-gradient(135deg, #e74c3c, #ff6b6b); color: #fff; text-align: center; padding: 16rpx; border-radius: 12rpx; font-size: 28rpx; font-weight: bold; margin-bottom: 20rpx; }
