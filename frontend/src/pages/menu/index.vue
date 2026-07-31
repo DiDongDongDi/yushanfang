@@ -19,7 +19,7 @@
       <view v-if="recommendList.length" class="recommend-list">
         <view v-for="(item, idx) in recommendList" :key="idx" class="recommend-item" @click="goDishByName(item.name)">
           <text class="name">{{ item.name }}</text>
-          <text class="desc">{{ item.desc }}</text>
+          <text v-if="item.desc" class="desc">{{ item.desc }}</text>
         </view>
       </view>
       <button v-else-if="!loading" class="ai-btn" @click="getRecommend">获取 AI 推荐</button>
@@ -155,9 +155,9 @@ onMounted(() => {
 .preference-bar { display: flex; gap: 16rpx; margin-bottom: 20rpx; }
 .preference-input { flex: 1; border: 2rpx solid #eee; border-radius: 12rpx; padding: 16rpx 20rpx; font-size: 26rpx; }
 .recommend-btn { background: #e74c3c; color: #fff; border-radius: 12rpx; font-size: 26rpx; height: 76rpx; display: flex; align-items: center; justify-content: center; padding: 0 30rpx; flex-shrink: 0; }
-.recommend-item { display: flex; justify-content: space-between; align-items: center; padding: 20rpx 0; border-bottom: 1rpx solid #f5f5f5; }
-.recommend-item .name { font-weight: bold; }
-.recommend-item .desc { color: #999; font-size: 24rpx; max-width: 400rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recommend-item { padding: 20rpx 0; border-bottom: 1rpx solid #f5f5f5; }
+.recommend-item .name { display: block; font-size: 30rpx; font-weight: bold; color: #333; }
+.recommend-item .desc { display: block; margin-top: 8rpx; color: #999; font-size: 26rpx; line-height: 1.6; word-break: break-all; }
 .dish-item { display: flex; justify-content: space-between; align-items: center; padding: 20rpx 0; border-bottom: 1rpx solid #f5f5f5; }
 .dish-info { flex: 1; }
 .dish-info .desc { display: block; color: #999; font-size: 24rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
