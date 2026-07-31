@@ -12,7 +12,13 @@ router = APIRouter(prefix="/dishes", tags=["菜品"])
 
 @router.post("", response_model=DishInDB)
 def create_dish(dish: DishCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    db_dish = Dish(user_id=current_user.id, name=dish.name, image=dish.image, description=dish.description)
+    db_dish = Dish(
+        user_id=current_user.id,
+        name=dish.name,
+        image=dish.image,
+        description=dish.description,
+        recipe_json=dish.recipe_json,
+    )
     db.add(db_dish)
     db.commit()
     db.refresh(db_dish)
@@ -43,6 +49,8 @@ def update_dish(dish_id: int, dish: DishUpdate, db: Session = Depends(get_db), c
         db_dish.image = dish.image
     if dish.description is not None:
         db_dish.description = dish.description
+    if dish.recipe_json is not None:
+        db_dish.recipe_json = dish.recipe_json
     db.commit()
     db.refresh(db_dish)
     return db_dish

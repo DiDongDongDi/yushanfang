@@ -5,6 +5,10 @@ export const sendCode = (phone) => request.post('/auth/send-code', { phone })
 export const login = (phone, code, nickname) => request.post('/auth/login', { phone, code, nickname })
 export const wechatLogin = (code) => request.post('/auth/wechat-login', { code })
 
+// 用户
+export const getUserInfo = () => request.get('/users/me')
+export const updateUserInfo = (data) => request.put('/users/me', data)
+
 // 菜品
 export const createDish = (data) => request.post('/dishes', data)
 export const getDishes = () => request.get('/dishes')
