@@ -13,25 +13,24 @@
     </view>
 
     <view v-if="generating" class="loading-tip">
-      <text>AI 正在生成菜谱，请稍候...</text>
-      <text v-if="streamingText" class="streaming-text">{{ streamingText }}</text>
+      <text>✨ AI 正在生成菜谱，请稍候...</text>
     </view>
 
     <template v-if="recipe">
       <view class="section">
         <view class="section-title">🛒 需要买的菜</view>
-        <text class="section-content">{{ recipe.buy_list }}</text>
+        <text class="section-content">{{ recipe.buy_list || '生成中...' }}</text>
       </view>
       <view class="section">
         <view class="section-title">🔪 备菜步骤</view>
-        <text class="section-content">{{ recipe.prep_steps }}</text>
+        <text class="section-content">{{ recipe.prep_steps || '生成中...' }}</text>
       </view>
       <view class="section">
         <view class="section-title">🍳 烹饪做法</view>
-        <text class="section-content">{{ recipe.cook_steps }}</text>
+        <text class="section-content">{{ recipe.cook_steps || '生成中...' }}</text>
       </view>
 
-      <view class="bottom-bar">
+      <view class="bottom-bar" v-if="!generating">
         <button class="btn-primary" @click="addToCart">加入本次做饭</button>
         <button class="btn-secondary" @click="saveToMyDishes">保存到我的菜</button>
       </view>
@@ -53,7 +52,7 @@ const dishId = ref(null)
 const dish = ref({})
 const recipe = ref(null)
 const generating = ref(false)
-const streamingText = ref('')
+const rawText = ref('')  // 存储原始流式文本
 
 onLoad((options) => {
   dishName.value = decodeURIComponent(options.name || '')
@@ -74,16 +73,19 @@ async function getDishInfo() {
 
 async function generateRecipe() {
   generating.value = true
-  recipe.value = null
-  streamingText.value = ''
+  recipe.value = { buy_list: '', prep_steps: '', cook_steps: '' }
+  rawText.value = ''
   // #ifdef H5
   aiGenerateRecipeStream(dishName.value,
     (chunk) => {
-      streamingText.value += chunk
-      recipe.value = parseStreamingRecipe(streamingText.value)
+      rawText.value += chunk
+      const parsed = parseStreamingRecipe(rawText.value)
+      recipe.value = { ...recipe.value, ...parsed }
     },
     (result) => {
-      recipe.value = result || {}
+      if (result) {
+        recipe.value = { buy_list: result.buy_list || '', prep_steps: result.prep_steps || '', cook_steps: result.cook_steps || '' }
+      }
       generating.value = false
     }
   ).catch(e => {
@@ -109,14 +111,31 @@ async function generateRecipe() {
 
 // 从流式文本中实时解析菜谱三部分
 function parseStreamingRecipe(text) {
-  const buyMatch = text.match(/"buy_list"\s*:\s*"([^"]*)"/s)
-  const prepMatch = text.match(/"prep_steps"\s*:\s*"([^"]*)"/s)
-  const cookMatch = text.match(/"cook_steps"\s*:\s*"([^"]*)"/s)
+  // 更宽松的匹配：支持部分 JSON
+  let buy = '', prep = '', cook = ''
+
+  // 匹配 buy_list 的值
+  const buyMatch = text.match(/"buy_list"\s*:\s*"([\s\S]*?)"(?=\s*,\s*"prep)/)
+  if (buyMatch) {
+    buy = buyMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\}/g, '}')
+  }
+
+  // 匹配 prep_steps 的值
+  const prepMatch = text.match(/"prep_steps"\s*:\s*"([\s\S]*?)"(?=\s*,\s*"cook)/)
+  if (prepMatch) {
+    prep = prepMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\}/g, '}')
+  }
+
+  // 匹配 cook_steps 的值
+  const cookMatch = text.match(/"cook_steps"\s*:\s*"([\s\S]*?)"(?=\s*})/)
+  if (cookMatch) {
+    cook = cookMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\}/g, '}')
+  }
+
   return {
-    buy_list: buyMatch ? buyMatch[1].replace(/\\n/g, '\n') : '',
-    prep_steps: prepMatch ? prepMatch[1].replace(/\\n/g, '\n') : '',
-    cook_steps: cookMatch ? cookMatch[1].replace(/\\n/g, '\n') : '',
-    _streaming: true
+    buy_list: buy,
+    prep_steps: prep,
+    cook_steps: cook
   }
 }
 

@@ -28,16 +28,8 @@
       </view>
     </view>
 
-    <!-- 流式生成预览 -->
-    <view v-if="summarizing && cart.length > 0" class="streaming-preview">
-      <view class="section">
-        <view class="section-title">✨ AI 正在生成...</view>
-        <text class="streaming-text">{{ streamingText || '正在思考...' }}</text>
-      </view>
-    </view>
-
-    <!-- AI 汇总结果 -->
-    <view v-if="summary && cart.length > 0" class="summary">
+    <!-- AI 汇总结果（生成中实时显示） -->
+    <view v-if="(summary || summarizing) && cart.length > 0" class="summary">
       <view class="summary-banner">📊 综合菜谱（已优化多菜流程）</view>
 
       <view class="section">
@@ -48,7 +40,7 @@
             <text class="step-text" :class="{ done: buyDone[idx] }">{{ item }}</text>
           </view>
         </view>
-        <text v-else class="section-content">{{ summary.buy_list }}</text>
+        <text v-else class="section-content generating-text">{{ summary?.buy_list || summarizing ? '正在生成...' : '' }}</text>
       </view>
 
       <view class="section">
@@ -59,7 +51,7 @@
             <text class="step-text" :class="{ done: prepDone[idx] }">{{ step }}</text>
           </view>
         </view>
-        <text v-else class="section-content">{{ summary.prep_steps }}</text>
+        <text v-else class="section-content generating-text">{{ summary?.prep_steps || summarizing ? '正在生成...' : '' }}</text>
       </view>
 
       <view class="section">
@@ -68,7 +60,7 @@
           <view v-for="(step, idx) in summaryCookList" :key="idx" class="step-item" @click="toggleStep(idx, 'cook')">
             <view class="step-check" :class="{ done: cookDone[idx] }">✓</view>
             <view class="step-content">
-              <text class="step-text" :class="{ done: cookDone[idx] }">{{ step.text }}</text>
+              <text class="step-text" :class="{ done: cookDone[idx] }">{{ step.text || step }}</text>
               <view v-if="step.minutes > 0" class="timer-row">
                 <text class="timer-label">{{ step.minutes }} 分钟</text>
                 <button class="timer-btn" size="mini" @click.stop="startTimer(step.minutes, idx)">
@@ -78,7 +70,7 @@
             </view>
           </view>
         </view>
-        <text v-else class="section-content">{{ summary.cook_steps }}</text>
+        <text v-else class="section-content generating-text">{{ summary?.cook_steps || summarizing ? '正在生成...' : '' }}</text>
       </view>
     </view>
 
@@ -95,19 +87,30 @@ import { aiGenerateRecipe, aiOptimizePlan, createRecord, createSteps } from '@/a
 const cart = ref(uni.getStorageSync('cart') || [])
 const summarizing = ref(false)
 const summary = ref(null)
-const streamingText = ref('')
 const buyDone = ref({})
 const prepDone = ref({})
 const cookDone = ref({})
 const timers = ref({})
 
-const summaryBuyList = computed(() => parseBuyList(summary.value?.buy_list))
+const summaryBuyList = computed(() => parseBuyList(summary.value?.buy_list || ''))
 const summaryPrepList = computed(() => (summary.value?.prep_steps || '').split('\n').filter(Boolean))
-const summaryCookList = computed(() => parseCookSteps(summary.value?.cook_steps))
+const summaryCookList = computed(() => parseCookSteps(summary.value?.cook_steps || ''))
+
+// 从流式文本解析三部分
+function parseStreamingSummary(text) {
+  let buy = '', prep = '', cook = ''
+  const buyMatch = text.match(/"buy_list"\s*:\s*"([\s\S]*?)"(?=\s*,\s*"prep)/)
+  if (buyMatch) buy = buyMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"')
+  const prepMatch = text.match(/"prep_steps"\s*:\s*"([\s\S]*?)"(?=\s*,\s*"cook)/)
+  if (prepMatch) prep = prepMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"')
+  const cookMatch = text.match(/"cook_steps"\s*:\s*"([\s\S]*?)"(?=\s*})/)
+  if (cookMatch) cook = cookMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"')
+  return { buy_list: buy, prep_steps: prep, cook_steps: cook }
+}
 
 function parseBuyList(text) {
   if (!text) return []
-  return text.split('\n').filter(Boolean).map((line) => line.replace(/^[\d、.,\s-]+/, '').trim())
+  return text.split('\n').filter(Boolean).map((line) => line.replace(/^[\d、.,\s-]+/, '').trim()).filter(Boolean)
 }
 
 function parseCookSteps(text) {
@@ -134,8 +137,7 @@ async function summaryPlan() {
     return
   }
   summarizing.value = true
-  summary.value = null
-  streamingText.value = ''
+  summary.value = { buy_list: '', prep_steps: '', cook_steps: '' }
   buyDone.value = {}
   prepDone.value = {}
   cookDone.value = {}
@@ -146,7 +148,7 @@ async function summaryPlan() {
     const token = uni.getStorageSync('token')
     const dishNames = ready.map((d) => d.name)
     const plans = ready.map((d) => d.recipe || {})
-    const resp = await fetch('https://yushanfang.wangqy.top/api/ai/optimize-plan/stream', {
+    const resp = await fetch('/api/ai/optimize-plan/stream', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -176,7 +178,8 @@ async function summaryPlan() {
             const json = JSON.parse(data)
             if (json.type === 'chunk') {
               fullText += json.content
-              streamingText.value = fullText
+              const parsed = parseStreamingSummary(fullText)
+              summary.value = { ...summary.value, ...parsed }
             } else if (json.type === 'done') {
               summary.value = json.result || {}
             }
@@ -200,7 +203,6 @@ async function summaryPlan() {
   }
   // #endif
 
-  streamingText.value = ''
   summarizing.value = false
 }
 
@@ -268,8 +270,7 @@ async function finishCooking() {
 
 .summary { margin-bottom: 30rpx; }
 .summary-banner { background: linear-gradient(135deg, #e74c3c, #ff6b6b); color: #fff; text-align: center; padding: 16rpx; border-radius: 12rpx; font-size: 28rpx; font-weight: bold; margin-bottom: 20rpx; }
-.streaming-preview { margin-bottom: 30rpx; }
-.streaming-text { font-size: 28rpx; color: #333; white-space: pre-wrap; line-height: 1.8; padding: 20rpx; background: #fafafa; border-radius: 12rpx; min-height: 200rpx; }
+.generating-text { color: #999; font-style: italic; }
 .section { background: #fff; border-radius: 16rpx; padding: 30rpx; margin-bottom: 24rpx; }
 .section-title { font-size: 32rpx; font-weight: bold; margin-bottom: 16rpx; color: #e74c3c; }
 .section-content { font-size: 28rpx; color: #333; white-space: pre-wrap; line-height: 1.8; }
