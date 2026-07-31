@@ -8,7 +8,6 @@
     <view class="section">
       <view class="section-title-row">
         <text class="section-title">🔥 AI 推荐</text>
-        <button v-if="recommendList.length" class="refresh-btn" @click="getRecommend" :loading="loading">🔄 刷新</button>
       </view>
       <view class="preference-bar">
         <input v-model="preference" class="preference-input" placeholder="今天想吃点什么？如：辣的、清淡、海鲜..." @confirm="getRecommend" />
@@ -151,9 +150,8 @@ onMounted(() => {
 .search-input { flex: 1; border: 2rpx solid #eee; border-radius: 12rpx; padding: 20rpx; }
 .search-btn { background: #e74c3c; color: #fff; border-radius: 12rpx; font-size: 28rpx; height: 88rpx; display: flex; align-items: center; justify-content: center; padding: 0 30rpx; }
 .section { background: #fff; border-radius: 16rpx; padding: 30rpx; margin-bottom: 24rpx; }
-.section-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20rpx; }
+.section-title-row { margin-bottom: 20rpx; }
 .section-title { font-size: 32rpx; font-weight: bold; }
-.refresh-btn { background: #fff; color: #e74c3c; border: 2rpx solid #e74c3c; border-radius: 30rpx; font-size: 24rpx; height: 56rpx; line-height: 52rpx; padding: 0 24rpx; }
 .preference-bar { display: flex; gap: 16rpx; margin-bottom: 20rpx; }
 .preference-input { flex: 1; border: 2rpx solid #eee; border-radius: 12rpx; padding: 16rpx 20rpx; font-size: 26rpx; }
 .recommend-btn { background: #e74c3c; color: #fff; border-radius: 12rpx; font-size: 26rpx; height: 76rpx; display: flex; align-items: center; justify-content: center; padding: 0 30rpx; flex-shrink: 0; }
