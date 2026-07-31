@@ -36,7 +36,7 @@ def ai_chat(prompt: str, db=None) -> dict:
     payload = {
         "model": config["model"],
         "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.7,
+        "temperature": 0.95,
     }
     try:
         resp = requests.post(
@@ -71,7 +71,7 @@ def ai_chat_stream(prompt: str, db=None):
     payload = {
         "model": config["model"],
         "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.7,
+        "temperature": 0.95,
         "stream": True,
     }
     try:
