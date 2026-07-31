@@ -54,12 +54,14 @@ bash start.sh
 - 后端 API：http://localhost:8000
 - API 文档：http://localhost:8000/docs
 
-### 公网部署
+## 公网部署
 
-项目已配置好公网访问（nginx 反向代理）：
-- 前端和后端统一通过 80 端口访问
+项目已配置好公网访问（nginx 反向代理 + HTTPS）：
+- **域名**：https://yushanfang.wangqy.top
 - 前端静态文件由 nginx 直接提供
 - 后端 API 通过 `/api` 路径代理
+- HTTP 自动跳转 HTTPS
+- SSL 证书自动续期
 
 ```bash
 # 安装 systemd 服务（开机自启）
@@ -71,9 +73,10 @@ sudo systemctl enable yushanfang-backend
 sudo systemctl start yushanfang-backend
 ```
 
-公网访问地址：http://你的服务器IP/
-- API：`http://你的服务器IP/api/`
-- 文档：`http://你的服务器IP/docs`
+访问地址：
+- 网站：https://yushanfang.wangqy.top/
+- API：`https://yushanfang.wangqy.top/api/`
+- 文档：`https://yushanfang.wangqy.top/docs`
 
 ### 手动启动
 
