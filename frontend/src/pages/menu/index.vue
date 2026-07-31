@@ -97,19 +97,19 @@ onMounted(() => {
 .container { padding: 30rpx; padding-bottom: 160rpx; }
 .search-bar { display: flex; gap: 16rpx; margin-bottom: 30rpx; }
 .search-input { flex: 1; border: 2rpx solid #eee; border-radius: 12rpx; padding: 20rpx; }
-.search-btn { background: #e74c3c; color: #fff; border-radius: 12rpx; font-size: 28rpx; }
+.search-btn { background: #e74c3c; color: #fff; border-radius: 12rpx; font-size: 28rpx; height: 88rpx; display: flex; align-items: center; justify-content: center; padding: 0 30rpx; }
 .section { background: #fff; border-radius: 16rpx; padding: 30rpx; margin-bottom: 24rpx; }
 .section-title { font-size: 32rpx; font-weight: bold; margin-bottom: 20rpx; }
-.recommend-item { display: flex; justify-content: space-between; padding: 20rpx 0; border-bottom: 1rpx solid #f5f5f5; }
+.recommend-item { display: flex; justify-content: space-between; align-items: center; padding: 20rpx 0; border-bottom: 1rpx solid #f5f5f5; }
 .recommend-item .name { font-weight: bold; }
 .recommend-item .desc { color: #999; font-size: 24rpx; max-width: 400rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dish-item { display: flex; justify-content: space-between; align-items: center; padding: 20rpx 0; border-bottom: 1rpx solid #f5f5f5; }
 .dish-info { flex: 1; }
 .dish-info .desc { display: block; color: #999; font-size: 24rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.add-btn { color: #e74c3c; font-size: 40rpx; padding: 0 20rpx; }
+.add-btn { color: #e74c3c; font-size: 40rpx; width: 60rpx; height: 60rpx; display: flex; align-items: center; justify-content: center; }
 .empty { color: #999; font-size: 26rpx; }
 .bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; padding: 20rpx 30rpx; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 -2rpx 10rpx rgba(0,0,0,0.05); }
 .cart-count { color: #e74c3c; font-size: 28rpx; }
-.btn-primary { background: #e74c3c; color: #fff; border-radius: 12rpx; font-size: 28rpx; }
-.ai-btn { background: #e74c3c; color: #fff; border-radius: 12rpx; font-size: 26rpx; }
+.btn-primary { background: #e74c3c; color: #fff; border-radius: 12rpx; font-size: 28rpx; height: 88rpx; display: flex; align-items: center; justify-content: center; padding: 0 30rpx; }
+.ai-btn { background: #e74c3c; color: #fff; border-radius: 12rpx; font-size: 26rpx; height: 88rpx; display: flex; align-items: center; justify-content: center; }
 </style>
