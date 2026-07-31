@@ -3,9 +3,9 @@
     <view class="header">
       <text class="title">本次做饭</text>
       <view class="header-right">
-        <button class="ai-optimize-btn" @click="optimizePlan" :loading="optimizing">
+        <button class="ai-optimize-btn" @click="summaryPlan" :loading="summarizing">
           <text class="btn-icon">✨</text>
-          <text>AI 优化流程</text>
+          <text>AI 生成菜谱</text>
         </button>
       </view>
     </view>
@@ -18,27 +18,75 @@
       <text v-if="cart.length === 0" class="empty">暂无菜品，去点菜吧</text>
     </view>
 
-    <view v-if="cart.length > 0" class="sections">
+    <!-- 每道菜单独生成菜谱 -->
+    <view v-if="cart.length > 0" class="dish-cards">
+      <view v-for="(dish, idx) in cart" :key="idx" class="dish-card">
+        <view class="dish-card-header">
+          <text class="dish-name">{{ dish.name }}</text>
+          <button v-if="!dish.recipe" class="gen-btn" :loading="generatingIdx === idx" @click="generateOne(idx)">
+            AI 生成菜谱
+          </button>
+          <text v-else class="gen-done">✓ 已生成</text>
+        </view>
+        <view v-if="dish.recipe" class="dish-recipe">
+          <view class="recipe-section">
+            <text class="recipe-title">🛒 买菜清单</text>
+            <view v-for="(item, sidx) in parseBuyList(dish.recipe.buy_list)" :key="sidx" class="step-item" @click="toggleDishBuy(idx, sidx)">
+              <view class="step-check" :class="{ done: dish.buyDone?.[sidx] }">✓</view>
+              <text class="step-text" :class="{ done: dish.buyDone?.[sidx] }">{{ item }}</text>
+            </view>
+            <text v-if="!dish.recipe.buy_list" class="recipe-content">暂无</text>
+          </view>
+          <view class="recipe-section">
+            <text class="recipe-title">🔪 备菜步骤</text>
+            <view v-for="(step, sidx) in (dish.recipe.prep_steps || '').split('\n').filter(Boolean)" :key="sidx" class="step-item" @click="toggleDishPrep(idx, sidx)">
+              <view class="step-check" :class="{ done: dish.prepDone?.[sidx] }">✓</view>
+              <text class="step-text" :class="{ done: dish.prepDone?.[sidx] }">{{ step }}</text>
+            </view>
+            <text v-if="!dish.recipe.prep_steps" class="recipe-content">暂无</text>
+          </view>
+          <view class="recipe-section">
+            <text class="recipe-title">🍳 做法</text>
+            <view v-for="(step, sidx) in parseCookSteps(dish.recipe.cook_steps)" :key="sidx" class="step-item" @click="toggleDishCook(idx, sidx)">
+              <view class="step-check" :class="{ done: dish.cookDone?.[sidx] }">✓</view>
+              <text class="step-text" :class="{ done: dish.cookDone?.[sidx] }">{{ step.text }}</text>
+            </view>
+            <text v-if="!dish.recipe.cook_steps" class="recipe-content">暂无</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- AI 汇总结果 -->
+    <view v-if="summary && cart.length > 0" class="summary">
+      <view class="summary-banner">📊 综合菜谱（已优化多菜流程）</view>
+
       <view class="section">
         <view class="section-title">🛒 买菜清单</view>
-        <text class="section-content">{{ buyList || '点击"AI 优化流程"生成' }}</text>
+        <view v-if="summaryBuyList.length" class="steps-list">
+          <view v-for="(item, idx) in summaryBuyList" :key="idx" class="step-item" @click="toggleBuy(idx)">
+            <view class="step-check" :class="{ done: buyDone[idx] }">✓</view>
+            <text class="step-text" :class="{ done: buyDone[idx] }">{{ item }}</text>
+          </view>
+        </view>
+        <text v-else class="section-content">{{ summary.buy_list }}</text>
       </view>
 
       <view class="section">
         <view class="section-title">🔪 备菜步骤</view>
-        <view v-if="prepSteps" class="steps-list">
-          <view v-for="(step, idx) in prepStepsList" :key="idx" class="step-item" @click="toggleStep(idx, 'prep')">
+        <view v-if="summaryPrepList.length" class="steps-list">
+          <view v-for="(step, idx) in summaryPrepList" :key="idx" class="step-item" @click="toggleStep(idx, 'prep')">
             <view class="step-check" :class="{ done: prepDone[idx] }">✓</view>
             <text class="step-text" :class="{ done: prepDone[idx] }">{{ step }}</text>
           </view>
         </view>
-        <text v-else class="section-content">点击"AI 优化流程"生成</text>
+        <text v-else class="section-content">{{ summary.prep_steps }}</text>
       </view>
 
       <view class="section">
         <view class="section-title">🍳 烹饪步骤</view>
-        <view v-if="cookSteps" class="steps-list">
-          <view v-for="(step, idx) in cookStepsList" :key="idx" class="step-item" @click="toggleStep(idx, 'cook')">
+        <view v-if="summaryCookList.length" class="steps-list">
+          <view v-for="(step, idx) in summaryCookList" :key="idx" class="step-item" @click="toggleStep(idx, 'cook')">
             <view class="step-check" :class="{ done: cookDone[idx] }">✓</view>
             <view class="step-content">
               <text class="step-text" :class="{ done: cookDone[idx] }">{{ step.text }}</text>
@@ -51,7 +99,7 @@
             </view>
           </view>
         </view>
-        <text v-else class="section-content">点击"AI 优化流程"生成</text>
+        <text v-else class="section-content">{{ summary.cook_steps }}</text>
       </view>
     </view>
 
@@ -63,19 +111,25 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { aiOptimizePlan, createRecord, createSteps } from '@/api'
+import { aiGenerateRecipe, aiOptimizePlan, createRecord, createSteps } from '@/api'
 
 const cart = ref(uni.getStorageSync('cart') || [])
-const buyList = ref('')
-const prepSteps = ref('')
-const cookSteps = ref('')
-const optimizing = ref(false)
+const generatingIdx = ref(null)
+const summarizing = ref(false)
+const summary = ref(null)
+const buyDone = ref({})
 const prepDone = ref({})
 const cookDone = ref({})
 const timers = ref({})
 
-const prepStepsList = computed(() => (prepSteps.value || '').split('\n').filter(Boolean))
-const cookStepsList = computed(() => parseCookSteps(cookSteps.value))
+const summaryBuyList = computed(() => parseBuyList(summary.value?.buy_list))
+const summaryPrepList = computed(() => (summary.value?.prep_steps || '').split('\n').filter(Boolean))
+const summaryCookList = computed(() => parseCookSteps(summary.value?.cook_steps))
+
+function parseBuyList(text) {
+  if (!text) return []
+  return text.split('\n').filter(Boolean).map((line) => line.replace(/^[\d、.,\s-]+/, '').trim())
+}
 
 function parseCookSteps(text) {
   if (!text) return []
@@ -90,15 +144,71 @@ function removeDish(idx) {
   uni.setStorageSync('cart', cart.value)
 }
 
-async function optimizePlan() {
-  optimizing.value = true
-  const dishNames = cart.value.map((d) => d.name)
-  const plans = cart.value.map((d) => d.recipe || {})
+async function generateOne(idx) {
+  const dish = cart.value[idx]
+  generatingIdx.value = idx
+  const res = await aiGenerateRecipe(dish.name)
+  if (res.buy_list || res.prep_steps || res.cook_steps) {
+    dish.recipe = {
+      buy_list: res.buy_list || '',
+      prep_steps: res.prep_steps || '',
+      cook_steps: res.cook_steps || ''
+    }
+    dish.buyDone = {}
+    dish.prepDone = {}
+    dish.cookDone = {}
+  } else if (res.error) {
+    uni.showToast({ title: '生成失败，请检查 AI 配置', icon: 'none' })
+  }
+  cart.value.splice(idx, 1, dish)
+  uni.setStorageSync('cart', cart.value)
+  generatingIdx.value = null
+}
+
+function toggleDishBuy(dishIdx, itemIdx) {
+  const dish = cart.value[dishIdx]
+  if (!dish.buyDone) dish.buyDone = {}
+  dish.buyDone[itemIdx] = !dish.buyDone[itemIdx]
+  uni.setStorageSync('cart', cart.value)
+}
+
+function toggleDishPrep(dishIdx, itemIdx) {
+  const dish = cart.value[dishIdx]
+  if (!dish.prepDone) dish.prepDone = {}
+  dish.prepDone[itemIdx] = !dish.prepDone[itemIdx]
+  uni.setStorageSync('cart', cart.value)
+}
+
+function toggleDishCook(dishIdx, itemIdx) {
+  const dish = cart.value[dishIdx]
+  if (!dish.cookDone) dish.cookDone = {}
+  dish.cookDone[itemIdx] = !dish.cookDone[itemIdx]
+  uni.setStorageSync('cart', cart.value)
+}
+
+async function summaryPlan() {
+  const ready = cart.value.filter((d) => d.recipe)
+  if (!ready.length) {
+    uni.showToast({ title: '请先为每道菜生成菜谱', icon: 'none' })
+    return
+  }
+  summarizing.value = true
+  const dishNames = ready.map((d) => d.name)
+  const plans = ready.map((d) => d.recipe || {})
   const res = await aiOptimizePlan(dishNames, plans)
-  buyList.value = res.buy_list || ''
-  prepSteps.value = res.prep_steps || ''
-  cookSteps.value = res.cook_steps || ''
-  optimizing.value = false
+  summary.value = {
+    buy_list: res.buy_list || '',
+    prep_steps: res.prep_steps || '',
+    cook_steps: res.cook_steps || ''
+  }
+  buyDone.value = {}
+  prepDone.value = {}
+  cookDone.value = {}
+  summarizing.value = false
+}
+
+function toggleBuy(idx) {
+  buyDone.value[idx] = !buyDone.value[idx]
 }
 
 function toggleStep(idx, type) {
@@ -125,7 +235,7 @@ async function finishCooking() {
   const dishIds = cart.value.map((d) => d.id).filter(Boolean)
   const record = await createRecord(dishIds)
   if (record.id) {
-    const steps = cookStepsList.value.map((s, i) => ({
+    const steps = summaryCookList.value.map((s, i) => ({
       title: s.text,
       detail: s.text,
       timer_minutes: s.minutes,
@@ -151,15 +261,30 @@ async function finishCooking() {
 .dishes-list { display: flex; flex-wrap: wrap; gap: 16rpx; margin-bottom: 30rpx; }
 .dish-tag { background: #fff3f0; color: #e74c3c; padding: 10rpx 20rpx; border-radius: 8rpx; font-size: 26rpx; }
 .remove { margin-left: 10rpx; color: #999; }
+
+.dish-cards { display: flex; flex-direction: column; gap: 20rpx; margin-bottom: 30rpx; }
+.dish-card { background: #fff; border-radius: 16rpx; padding: 24rpx; }
+.dish-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16rpx; }
+.dish-name { font-size: 32rpx; font-weight: bold; }
+.gen-btn { background: #e74c3c; color: #fff; border-radius: 30rpx; font-size: 24rpx; padding: 8rpx 24rpx; border: none; }
+.gen-done { color: #27ae60; font-size: 24rpx; }
+.dish-recipe { background: #fafafa; border-radius: 12rpx; padding: 20rpx; }
+.recipe-section { margin-bottom: 16rpx; }
+.recipe-section:last-child { margin-bottom: 0; }
+.recipe-title { font-size: 26rpx; font-weight: bold; color: #e74c3c; display: block; margin-bottom: 8rpx; }
+.recipe-content { font-size: 24rpx; color: #666; white-space: pre-wrap; line-height: 1.7; }
+
+.summary { margin-bottom: 30rpx; }
+.summary-banner { background: linear-gradient(135deg, #e74c3c, #ff6b6b); color: #fff; text-align: center; padding: 16rpx; border-radius: 12rpx; font-size: 28rpx; font-weight: bold; margin-bottom: 20rpx; }
 .section { background: #fff; border-radius: 16rpx; padding: 30rpx; margin-bottom: 24rpx; }
 .section-title { font-size: 32rpx; font-weight: bold; margin-bottom: 16rpx; color: #e74c3c; }
 .section-content { font-size: 28rpx; color: #333; white-space: pre-wrap; line-height: 1.8; }
-.steps-list { }
 .step-item { display: flex; align-items: flex-start; padding: 16rpx 0; border-bottom: 1rpx solid #f5f5f5; }
-.step-check { width: 40rpx; height: 40rpx; border-radius: 50%; border: 2rpx solid #ddd; margin-right: 16rpx; display: flex; align-items: center; justify-content: center; font-size: 24rpx; color: #fff; }
+.step-check { width: 40rpx; height: 40rpx; border-radius: 50%; border: 2rpx solid #ddd; margin-right: 16rpx; display: flex; align-items: center; justify-content: center; font-size: 24rpx; color: #fff; flex-shrink: 0; }
 .step-check.done { background: #e74c3c; border-color: #e74c3c; }
 .step-text { flex: 1; font-size: 28rpx; line-height: 1.6; }
 .step-text.done { text-decoration: line-through; color: #999; }
+.step-content { flex: 1; }
 .timer-row { margin-top: 10rpx; display: flex; align-items: center; gap: 16rpx; }
 .timer-label { font-size: 24rpx; color: #e74c3c; }
 .timer-btn { background: #e74c3c; color: #fff; font-size: 22rpx; padding: 4rpx 16rpx; border-radius: 8rpx; }
