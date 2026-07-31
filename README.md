@@ -54,6 +54,27 @@ bash start.sh
 - 后端 API：http://localhost:8000
 - API 文档：http://localhost:8000/docs
 
+### 公网部署
+
+项目已配置好公网访问（nginx 反向代理）：
+- 前端和后端统一通过 80 端口访问
+- 前端静态文件由 nginx 直接提供
+- 后端 API 通过 `/api` 路径代理
+
+```bash
+# 安装 systemd 服务（开机自启）
+sudo bash scripts/install-service.sh
+
+# 或手动配置 nginx
+sudo cp scripts/yushanfang-backend.service /etc/systemd/system/
+sudo systemctl enable yushanfang-backend
+sudo systemctl start yushanfang-backend
+```
+
+公网访问地址：http://你的服务器IP/
+- API：`http://你的服务器IP/api/`
+- 文档：`http://你的服务器IP/docs`
+
 ### 手动启动
 
 #### 后端
