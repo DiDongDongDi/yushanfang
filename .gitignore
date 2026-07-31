@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+*.log
+.env
+.DS_Store
+
+# Node
+node_modules/
+dist/
+unpackage/
+.hbuilderx/
+
+# IDE
+.vscode/
+.idea/
+
+# 数据库
+*.sqlite3
+
+# 上传文件
+backend/uploads/
+frontend/uploads/
+
+# 微信小程序
+project.private.config.json
