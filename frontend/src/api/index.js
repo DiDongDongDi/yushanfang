@@ -53,7 +53,7 @@ export const aiOptimizePlanStream = (dishes, plans, onChunk, onDone) => {
 function streamRequest(url, data, onChunk, onDone) {
   const token = uni.getStorageSync('token')
   // #ifdef H5
-  const baseURL = window.location.origin || ''
+  const baseURL = ''
   return fetch(baseURL + url, {
     method: 'POST',
     headers: {
@@ -62,40 +62,50 @@ function streamRequest(url, data, onChunk, onDone) {
     },
     body: JSON.stringify(data)
   }).then(resp => {
-    if (!resp.ok) throw new Error('请求失败')
+    if (!resp.ok) {
+      throw new Error(`HTTP ${resp.status}`)
+    }
+    if (!resp.body) {
+      throw new Error('Response body is not available')
+    }
     const reader = resp.body.getReader()
     const decoder = new TextDecoder()
     let buffer = ''
     let finished = false
+
+    function processBuffer() {
+      let idx
+      while ((idx = buffer.indexOf('\n\n')) !== -1) {
+        const event = buffer.slice(0, idx)
+        buffer = buffer.slice(idx + 2)
+        if (event.startsWith('data:')) {
+          try {
+            const json = JSON.parse(event.slice(5).trim())
+            if (json.type === 'chunk' && onChunk) onChunk(json.content)
+            if (json.type === 'done') {
+              finished = true
+              if (onDone) onDone(json.result)
+            }
+          } catch (e) {}
+        }
+      }
+    }
+
     function read() {
       return reader.read().then(({ done, value }) => {
         if (done) {
           if (!finished) {
             finished = true
-            onDone && onDone()
+            if (onDone) onDone()
           }
           return
         }
         buffer += decoder.decode(value, { stream: true })
-        let idx
-        while ((idx = buffer.indexOf('\n\n')) !== -1) {
-          const event = buffer.slice(0, idx)
-          buffer = buffer.slice(idx + 2)
-          if (event.startsWith('data:')) {
-            const dataStr = event.slice(5).trim()
-            try {
-              const json = JSON.parse(dataStr)
-              if (json.type === 'chunk' && onChunk) onChunk(json.content)
-              if (json.type === 'done' && !finished) {
-                finished = true
-                onDone && onDone(json.result)
-              }
-            } catch (e) {}
-          }
-        }
+        processBuffer()
         return read()
       })
     }
+
     return read()
   })
   // #endif
