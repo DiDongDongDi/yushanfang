@@ -8,6 +8,25 @@ export const wechatLogin = (code) => request.post('/auth/wechat-login', { code }
 // 用户
 export const getUserInfo = () => request.get('/users/me')
 export const updateUserInfo = (data) => request.put('/users/me', data)
+export const uploadAvatar = (filePath) => {
+  const token = uni.getStorageSync('token')
+  return new Promise((resolve, reject) => {
+    uni.uploadFile({
+      url: '/api/upload/avatar',
+      filePath,
+      name: 'file',
+      header: { Authorization: `Bearer ${token}` },
+      success: (res) => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          resolve(JSON.parse(res.data))
+        } else {
+          reject(res.data)
+        }
+      },
+      fail: (err) => reject(err)
+    })
+  })
+}
 
 // 菜品
 export const createDish = (data) => request.post('/dishes', data)
