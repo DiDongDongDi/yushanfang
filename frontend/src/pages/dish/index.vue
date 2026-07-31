@@ -80,15 +80,17 @@ async function generateRecipe() {
   aiGenerateRecipeStream(dishName.value,
     (chunk) => {
       streamingText.value += chunk
-      // 实时解析预览
       recipe.value = parseStreamingRecipe(streamingText.value)
-      recipe.value._streaming = true
     },
     (result) => {
       recipe.value = result || {}
       generating.value = false
     }
-  )
+  ).catch(e => {
+    console.error('AI生成失败:', e)
+    uni.showToast({ title: 'AI生成失败', icon: 'none' })
+    generating.value = false
+  })
   // #endif
   // #ifndef H5
   const res = await aiGenerateRecipe(dishName.value)

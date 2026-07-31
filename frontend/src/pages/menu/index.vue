@@ -71,7 +71,12 @@ async function getRecommend() {
       recommendStreamText.value = ''
       loading.value = false
     }
-  )
+  ).catch(e => {
+    console.error('AI推荐失败:', e)
+    uni.showToast({ title: 'AI推荐失败', icon: 'none' })
+    recommendStreamText.value = ''
+    loading.value = false
+  })
   // #endif
   // #ifndef H5
   const res = await aiRecommend('')

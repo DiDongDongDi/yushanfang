@@ -53,7 +53,8 @@ export const aiOptimizePlanStream = (dishes, plans, onChunk, onDone) => {
 function streamRequest(url, data, onChunk, onDone) {
   const token = uni.getStorageSync('token')
   // #ifdef H5
-  return fetch(url, {
+  const baseURL = window.location.origin || ''
+  return fetch(baseURL + url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -65,10 +66,14 @@ function streamRequest(url, data, onChunk, onDone) {
     const reader = resp.body.getReader()
     const decoder = new TextDecoder()
     let buffer = ''
+    let finished = false
     function read() {
       return reader.read().then(({ done, value }) => {
         if (done) {
-          onDone && onDone()
+          if (!finished) {
+            finished = true
+            onDone && onDone()
+          }
           return
         }
         buffer += decoder.decode(value, { stream: true })
@@ -77,11 +82,14 @@ function streamRequest(url, data, onChunk, onDone) {
           const event = buffer.slice(0, idx)
           buffer = buffer.slice(idx + 2)
           if (event.startsWith('data:')) {
-            const data = event.slice(5).trim()
+            const dataStr = event.slice(5).trim()
             try {
-              const json = JSON.parse(data)
+              const json = JSON.parse(dataStr)
               if (json.type === 'chunk' && onChunk) onChunk(json.content)
-              if (json.type === 'done' && onDone) onDone(json.result)
+              if (json.type === 'done' && !finished) {
+                finished = true
+                onDone && onDone(json.result)
+              }
             } catch (e) {}
           }
         }
