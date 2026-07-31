@@ -91,12 +91,11 @@
             <view class="step-check" :class="{ done: cookDone[idx] }">✓</view>
             <view class="step-content">
               <text class="step-text" :class="{ done: cookDone[idx] }">{{ step.text || step }}</text>
-              <view v-if="step.minutes > 0" class="timer-row">
-                <text class="timer-label">{{ step.minutes }} 分钟</text>
-                <button class="timer-btn" size="mini" @click.stop="startTimer(step.minutes, idx)">
-                  {{ timers[idx] ? `${timers[idx]}s` : '开始倒计时' }}
-                </button>
-              </view>
+            </view>
+            <view v-if="step.minutes > 0" class="timer-row">
+              <button class="timer-btn" size="mini" @click.stop="startTimer(step.minutes, idx)">
+                {{ timers[idx] ? `${timers[idx]}s` : '开始倒计时' }}
+              </button>
             </view>
           </view>
         </view>
@@ -326,9 +325,9 @@ async function finishCooking() {
 .step-text { flex: 1; font-size: 28rpx; line-height: 1.6; }
 .step-text.done { text-decoration: line-through; color: #999; }
 .step-content { flex: 1; }
-.timer-row { margin-top: 10rpx; display: flex; align-items: center; gap: 16rpx; }
+.timer-row { display: flex; align-items: center; gap: 16rpx; margin-left: auto; flex-shrink: 0; }
 .timer-label { font-size: 24rpx; color: #e74c3c; }
-.timer-btn { background: #e74c3c; color: #fff; font-size: 22rpx; padding: 4rpx 16rpx; border-radius: 8rpx; }
+.timer-btn { background: #e74c3c; color: #fff; font-size: 22rpx; padding: 8rpx 20rpx; border-radius: 8rpx; white-space: nowrap; }
 .bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; padding: 20rpx 30rpx; box-shadow: 0 -2rpx 10rpx rgba(0,0,0,0.05); }
 .btn-primary { background: #e74c3c; color: #fff; border-radius: 12rpx; }
 .empty { color: #999; font-size: 26rpx; }
