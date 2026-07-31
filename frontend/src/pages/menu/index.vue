@@ -7,8 +7,8 @@
 
     <view class="section">
       <view class="section-title">🔥 AI 推荐</view>
-      <view v-if="recommendStreamText && loading" class="streaming-preview">
-        <text class="streaming-text">{{ recommendStreamText }}</text>
+      <view v-if="loading" class="loading-hint">
+        <text>✨ 正在为你推荐...</text>
       </view>
       <view v-if="recommendList.length" class="recommend-list">
         <view v-for="(item, idx) in recommendList" :key="idx" class="recommend-item" @click="goDishByName(item.name)">
@@ -16,7 +16,7 @@
           <text class="desc">{{ item.desc }}</text>
         </view>
       </view>
-      <button v-else class="ai-btn" @click="getRecommend" :loading="loading">获取 AI 推荐</button>
+      <button v-else-if="!loading" class="ai-btn" @click="getRecommend">获取 AI 推荐</button>
     </view>
 
     <view class="section">
@@ -49,18 +49,22 @@ import { aiRecommend, aiRecommendStream, getDishes } from '@/api'
 const keyword = ref('')
 const recommendList = ref([])
 const loading = ref(false)
-const recommendStreamText = ref('')
+const recommendRawText = ref('')
 const dishes = ref([])
 const cart = ref(uni.getStorageSync('cart') || [])
 
 async function getRecommend() {
   loading.value = true
   recommendList.value = []
-  recommendStreamText.value = ''
+  recommendRawText.value = ''
   // #ifdef H5
   aiRecommendStream('',
     (chunk) => {
-      recommendStreamText.value += chunk
+      recommendRawText.value += chunk
+      const parsed = parseRecommend(recommendRawText.value)
+      if (parsed.length) {
+        recommendList.value = parsed
+      }
     },
     (result) => {
       if (result && result.dishes) {
@@ -68,13 +72,13 @@ async function getRecommend() {
       } else if (result && result.result) {
         recommendList.value = [{ name: result.result, desc: '' }]
       }
-      recommendStreamText.value = ''
+      recommendRawText.value = ''
       loading.value = false
     }
   ).catch(e => {
     console.error('AI推荐失败:', e)
     uni.showToast({ title: 'AI推荐失败', icon: 'none' })
-    recommendStreamText.value = ''
+    recommendRawText.value = ''
     loading.value = false
   })
   // #endif
@@ -92,6 +96,14 @@ async function getRecommend() {
 async function loadDishes() {
   const res = await getDishes()
   dishes.value = res || []
+}
+
+// 从流式文本中实时解析推荐菜品
+function parseRecommend(text) {
+  const match = text.match(/"name"\s*:\s*"([^"]*)"/g)
+  if (!match) return []
+  const names = match.map(m => m.match(/"name"\s*:\s*"([^"]*)"/)[1])
+  return names.map(name => ({ name, desc: '' }))
 }
 
 function searchDish() {
@@ -139,8 +151,7 @@ onMounted(() => {
 .dish-info .desc { display: block; color: #999; font-size: 24rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .add-btn { color: #e74c3c; font-size: 40rpx; width: 60rpx; height: 60rpx; display: flex; align-items: center; justify-content: center; }
 .empty { color: #999; font-size: 26rpx; }
-.streaming-preview { background: #fafafa; border-radius: 12rpx; padding: 20rpx; margin-bottom: 20rpx; }
-.streaming-text { font-size: 24rpx; color: #666; white-space: pre-wrap; line-height: 1.7; }
+.loading-hint { color: #e74c3c; font-size: 26rpx; padding: 20rpx 0; }
 .bottom-bar { position: fixed; bottom: var(--window-bottom); left: 0; right: 0; background: #fff; padding: 20rpx 30rpx; display: flex; align-items: center; box-shadow: 0 -2rpx 10rpx rgba(0,0,0,0.05); z-index: 100; }
 .cart-list { flex: 1; display: flex; flex-wrap: wrap; gap: 12rpx; margin-right: 20rpx; }
 .cart-item { background: #fff3f0; color: #e74c3c; padding: 8rpx 16rpx; border-radius: 8rpx; font-size: 24rpx; display: flex; align-items: center; gap: 8rpx; }

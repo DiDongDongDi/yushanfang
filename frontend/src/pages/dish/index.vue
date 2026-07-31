@@ -19,15 +19,30 @@
     <template v-if="recipe">
       <view class="section">
         <view class="section-title">🛒 需要买的菜</view>
-        <text class="section-content">{{ recipe.buy_list || '生成中...' }}</text>
+        <view class="checklist">
+          <view v-for="(item, idx) in buyList" :key="idx" class="check-item" @click="checkedBuy[idx] = !checkedBuy[idx]">
+            <view class="checkbox" :class="{ checked: checkedBuy[idx] }">✓</view>
+            <text :class="{ done: checkedBuy[idx] }">{{ item }}</text>
+          </view>
+        </view>
       </view>
       <view class="section">
         <view class="section-title">🔪 备菜步骤</view>
-        <text class="section-content">{{ recipe.prep_steps || '生成中...' }}</text>
+        <view class="checklist">
+          <view v-for="(item, idx) in prepList" :key="idx" class="check-item" @click="checkedPrep[idx] = !checkedPrep[idx]">
+            <view class="checkbox" :class="{ checked: checkedPrep[idx] }">✓</view>
+            <text :class="{ done: checkedPrep[idx] }">{{ item }}</text>
+          </view>
+        </view>
       </view>
       <view class="section">
         <view class="section-title">🍳 烹饪做法</view>
-        <text class="section-content">{{ recipe.cook_steps || '生成中...' }}</text>
+        <view class="checklist">
+          <view v-for="(item, idx) in cookList" :key="idx" class="check-item" @click="checkedCook[idx] = !checkedCook[idx]">
+            <view class="checkbox" :class="{ checked: checkedCook[idx] }">✓</view>
+            <text :class="{ done: checkedCook[idx] }">{{ item }}</text>
+          </view>
+        </view>
       </view>
 
       <view class="bottom-bar" v-if="!generating">
@@ -43,7 +58,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { aiGenerateRecipe, aiGenerateRecipeStream, createDish } from '@/api'
 
@@ -53,6 +68,14 @@ const dish = ref({})
 const recipe = ref(null)
 const generating = ref(false)
 const rawText = ref('')  // 存储原始流式文本
+const checkedBuy = ref({})  // 买菜清单勾选状态
+const checkedPrep = ref({})  // 备菜步骤勾选状态
+const checkedCook = ref({})  // 烹饪步骤勾选状态
+
+// 将菜谱文本转换为行列表
+const buyList = computed(() => (recipe.value?.buy_list || '').split('\n').filter(Boolean).map(s => s.replace(/^[\d、.,\s-]+/, '').trim()).filter(Boolean))
+const prepList = computed(() => (recipe.value?.prep_steps || '').split('\n').filter(Boolean).map(s => s.replace(/^[\d、.,\s-]+/, '').trim()).filter(Boolean))
+const cookList = computed(() => (recipe.value?.cook_steps || '').split('\n').filter(Boolean).map(s => s.replace(/^[\d、.,\s-]+/, '').trim()).filter(Boolean))
 
 onLoad((options) => {
   dishName.value = decodeURIComponent(options.name || '')
@@ -156,7 +179,7 @@ function addToCart() {
   }
   uni.showToast({ title: '已加入本次做饭', icon: 'success' })
   setTimeout(() => {
-    uni.navigateTo({ url: '/pages/cooking/index' })
+    uni.switchTab({ url: '/pages/menu/index' })
   }, 800)
 }
 
@@ -185,4 +208,10 @@ async function saveToMyDishes() {
 .bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; padding: 20rpx 30rpx; display: flex; gap: 20rpx; box-shadow: 0 -2rpx 10rpx rgba(0,0,0,0.05); }
 .bottom-bar .btn-primary, .bottom-bar .btn-secondary { flex: 1; margin-top: 0; }
 .loading-tip, .empty-tip { text-align: center; color: #999; padding: 60rpx 0; }
+.checklist { padding: 0; }
+.check-item { display: flex; align-items: flex-start; padding: 16rpx 0; border-bottom: 1rpx solid #f5f5f5; gap: 16rpx; }
+.check-item:last-child { border-bottom: none; }
+.checkbox { width: 36rpx; height: 36rpx; border-radius: 50%; border: 2rpx solid #ddd; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 22rpx; color: transparent; }
+.checkbox.checked { background: #e74c3c; border-color: #e74c3c; color: #fff; }
+.check-item text.done { text-decoration: line-through; color: #999; }
 </style>
