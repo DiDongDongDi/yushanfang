@@ -54,3 +54,50 @@ def ai_chat(prompt: str, db=None) -> dict:
         return {"result": content}
     except Exception as e:
         return {"error": str(e)}
+
+
+def ai_chat_stream(prompt: str, db=None):
+    """流式 AI 聊天，逐步 yield 内容片段"""
+    config = get_ai_config(db)
+
+    if not config["api_key"]:
+        yield "[模拟AI返回] 请配置 AI API Key"
+        return
+
+    headers = {
+        "Authorization": f"Bearer {config['api_key']}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model": config["model"],
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.7,
+        "stream": True,
+    }
+    try:
+        resp = requests.post(
+            f"{config['base_url']}/chat/completions",
+            headers=headers,
+            json=payload,
+            stream=True,
+            timeout=60,
+        )
+        resp.raise_for_status()
+        for line in resp.iter_lines():
+            if not line:
+                continue
+            line = line.decode("utf-8")
+            if line.startswith("data:"):
+                data = line[5:].strip()
+                if data == "[DONE]":
+                    break
+                try:
+                    chunk = json.loads(data)
+                    delta = chunk["choices"][0].get("delta", {})
+                    content = delta.get("content", "")
+                    if content:
+                        yield content
+                except Exception:
+                    continue
+    except Exception as e:
+        yield f"\n[错误] {str(e)}"

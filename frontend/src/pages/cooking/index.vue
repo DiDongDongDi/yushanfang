@@ -5,7 +5,7 @@
       <view class="header-right">
         <button class="ai-optimize-btn" @click="summaryPlan" :loading="summarizing">
           <text class="btn-icon">✨</text>
-          <text>AI 汇总生成所有菜品的步骤</text>
+          <text>汇总生成步骤</text>
         </button>
       </view>
     </view>
@@ -25,6 +25,14 @@
         <text v-if="dish.recipe" class="gen-done">✓ 已生成菜谱</text>
         <text v-else class="gen-notice">未生成菜谱</text>
         <text class="remove" @click="removeDish(idx)">×</text>
+      </view>
+    </view>
+
+    <!-- 流式生成预览 -->
+    <view v-if="summarizing && cart.length > 0" class="streaming-preview">
+      <view class="section">
+        <view class="section-title">✨ AI 正在生成...</view>
+        <text class="streaming-text">{{ streamingText || '正在思考...' }}</text>
       </view>
     </view>
 
@@ -87,6 +95,7 @@ import { aiGenerateRecipe, aiOptimizePlan, createRecord, createSteps } from '@/a
 const cart = ref(uni.getStorageSync('cart') || [])
 const summarizing = ref(false)
 const summary = ref(null)
+const streamingText = ref('')
 const buyDone = ref({})
 const prepDone = ref({})
 const cookDone = ref({})
@@ -115,16 +124,72 @@ function removeDish(idx) {
 }
 
 async function summaryPlan() {
-  const noRecipe = cart.value.filter((d) => !d.recipe)
-  if (noRecipe.length) {
+  const ready = cart.value.filter((d) => d.recipe)
+  if (!ready.length) {
     uni.showModal({
       title: '提示',
-      content: `${noRecipe.map((d) => d.name).join('、')} 未生成菜谱，请先在菜品详情页生成菜谱`,
+      content: '所有菜品均未生成菜谱，请先在菜品详情页生成菜谱',
       showCancel: false
     })
     return
   }
   summarizing.value = true
+  summary.value = null
+  streamingText.value = ''
+  buyDone.value = {}
+  prepDone.value = {}
+  cookDone.value = {}
+  timers.value = {}
+
+  // #ifdef H5
+  try {
+    const token = uni.getStorageSync('token')
+    const dishNames = ready.map((d) => d.name)
+    const plans = ready.map((d) => d.recipe || {})
+    const resp = await fetch('https://yushanfang.wangqy.top/api/ai/optimize-plan/stream', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ dishes: dishNames, plans })
+    })
+    if (!resp.ok || !resp.body) throw new Error('流式请求失败')
+
+    const reader = resp.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let fullText = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+
+      let idx
+      while ((idx = buffer.indexOf('\n\n')) !== -1) {
+        const event = buffer.slice(0, idx)
+        buffer = buffer.slice(idx + 2)
+        if (event.startsWith('data:')) {
+          const data = event.slice(5).trim()
+          try {
+            const json = JSON.parse(data)
+            if (json.type === 'chunk') {
+              fullText += json.content
+              streamingText.value = fullText
+            } else if (json.type === 'done') {
+              summary.value = json.result || {}
+            }
+          } catch (e) { /* 忽略 */ }
+        }
+      }
+    }
+  } catch (e) {
+    uni.showToast({ title: '汇总失败，请重试', icon: 'none' })
+  }
+  // #endif
+
+  // #ifndef H5
   const dishNames = ready.map((d) => d.name)
   const plans = ready.map((d) => d.recipe || {})
   const res = await aiOptimizePlan(dishNames, plans)
@@ -133,9 +198,9 @@ async function summaryPlan() {
     prep_steps: res.prep_steps || '',
     cook_steps: res.cook_steps || ''
   }
-  buyDone.value = {}
-  prepDone.value = {}
-  cookDone.value = {}
+  // #endif
+
+  streamingText.value = ''
   summarizing.value = false
 }
 
@@ -203,6 +268,8 @@ async function finishCooking() {
 
 .summary { margin-bottom: 30rpx; }
 .summary-banner { background: linear-gradient(135deg, #e74c3c, #ff6b6b); color: #fff; text-align: center; padding: 16rpx; border-radius: 12rpx; font-size: 28rpx; font-weight: bold; margin-bottom: 20rpx; }
+.streaming-preview { margin-bottom: 30rpx; }
+.streaming-text { font-size: 28rpx; color: #333; white-space: pre-wrap; line-height: 1.8; padding: 20rpx; background: #fafafa; border-radius: 12rpx; min-height: 200rpx; }
 .section { background: #fff; border-radius: 16rpx; padding: 30rpx; margin-bottom: 24rpx; }
 .section-title { font-size: 32rpx; font-weight: bold; margin-bottom: 16rpx; color: #e74c3c; }
 .section-content { font-size: 28rpx; color: #333; white-space: pre-wrap; line-height: 1.8; }
