@@ -42,7 +42,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { aiRecommend, getDishes } from '@/api'
+import { aiRecommend, getDishes, aiGenerateRecipe } from '@/api'
 
 const keyword = ref('')
 const recommendList = ref([])
@@ -74,15 +74,29 @@ function searchDish() {
   addDish(keyword.value)
 }
 
-function addDish(name) {
+async function addDish(name) {
   if (!name) return
   if (cart.value.find((d) => d.name === name)) {
     uni.showToast({ title: '已在列表中', icon: 'none' })
     return
   }
-  cart.value.push({ name })
-  uni.setStorageSync('cart', cart.value)
-  uni.showToast({ title: `已添加「${name}」`, icon: 'success' })
+  uni.showLoading({ title: 'AI 生成菜谱中...' })
+  try {
+    const res = await aiGenerateRecipe(name)
+    uni.hideLoading()
+    let recipe = null
+    if (res.buy_list || res.prep_steps || res.cook_steps) {
+      recipe = { buy_list: res.buy_list || '', prep_steps: res.prep_steps || '', cook_steps: res.cook_steps || '' }
+    }
+    cart.value.push({ name, recipe })
+    uni.setStorageSync('cart', cart.value)
+    uni.showToast({ title: `已添加「${name}」并生成菜谱`, icon: 'success' })
+  } catch (e) {
+    uni.hideLoading()
+    cart.value.push({ name })
+    uni.setStorageSync('cart', cart.value)
+    uni.showToast({ title: `已添加「${name}」（菜谱生成失败）`, icon: 'none' })
+  }
 }
 
 function goDish(id) {
