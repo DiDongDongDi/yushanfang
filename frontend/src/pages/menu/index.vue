@@ -1,10 +1,6 @@
 <template>
   <view class="container">
-    <view class="search-bar">
-      <input v-model="keyword" class="search-input" placeholder="输入菜名搜索或点菜" @confirm="searchDish" />
-      <button class="search-btn" @click="searchDish">点菜</button>
-    </view>
-
+    <!-- AI 推荐（最上面） -->
     <view class="section">
       <view class="section-title-row">
         <text class="section-title">🔥 AI 推荐</text>
@@ -25,14 +21,24 @@
       <button v-else-if="!loading" class="ai-btn" @click="getRecommend">获取 AI 推荐</button>
     </view>
 
+    <!-- 搜索菜品（搜索历史菜品） -->
+    <view class="search-bar">
+      <input v-model="keyword" class="search-input" placeholder="搜索我的历史菜品..." />
+      <button class="search-btn" @click="searchDish">点菜</button>
+    </view>
+
+    <!-- 搜索结果 / 历史菜品 -->
     <view class="section">
-      <view class="section-title">📜 我的历史菜品</view>
-      <view v-for="dish in dishes" :key="dish.id" class="dish-item" @click="goDish(dish.id)">
-        <view class="dish-info">
-          <text class="name">{{ dish.name }}</text>
+      <view class="section-title">{{ keyword ? `搜索结果 (${filteredDishes.length})` : '📜 我的历史菜品' }}</view>
+      <view v-if="filteredDishes.length" class="search-results">
+        <view v-for="dish in filteredDishes" :key="dish.id" class="dish-item" @click="goDish(dish.id)">
+          <view class="dish-info">
+            <text class="name">{{ dish.name }}</text>
+          </view>
         </view>
       </view>
-      <text v-if="!dishes.length" class="empty">暂无历史菜品</text>
+      <text v-else-if="!dishes.length" class="empty">暂无历史菜品</text>
+      <text v-else-if="keyword && !filteredDishes.length" class="empty">未找到「{{ keyword }}」，点击"点菜"按钮直接添加</text>
     </view>
 
     <view class="bottom-bar" v-if="cart.length > 0">
@@ -48,7 +54,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { aiRecommend, aiRecommendStream, getDishes } from '@/api'
 
@@ -59,6 +65,13 @@ const loading = ref(false)
 const recommendRawText = ref('')
 const dishes = ref([])
 const cart = ref(uni.getStorageSync('cart') || [])
+
+// 搜索历史菜品
+const filteredDishes = computed(() => {
+  const kw = keyword.value.trim()
+  if (!kw) return dishes.value
+  return dishes.value.filter((d) => d.name.includes(kw))
+})
 
 async function getRecommend() {
   loading.value = true
@@ -120,11 +133,18 @@ function parseRecommend(text) {
 }
 
 function searchDish() {
-  if (!keyword.value) {
+  const kw = keyword.value.trim()
+  if (!kw) {
     uni.showToast({ title: '请输入菜名', icon: 'none' })
     return
   }
-  goDishByName(keyword.value)
+  // 优先打开匹配的历史菜品
+  const match = dishes.value.find((d) => d.name === kw)
+  if (match) {
+    goDish(match.id)
+  } else {
+    goDishByName(kw)
+  }
 }
 
 function goDish(id) {
