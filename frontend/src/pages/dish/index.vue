@@ -95,8 +95,16 @@ async function generateRecipe() {
 function addToCart() {
   let cart = uni.getStorageSync('cart') || []
   const name = dishName.value
+  const item = { name, recipe: recipe.value }
+  if (recipe.value && recipe.value.buy_list) {
+    item.recipe = {
+      buy_list: recipe.value.buy_list,
+      prep_steps: recipe.value.prep_steps || '',
+      cook_steps: recipe.value.cook_steps || ''
+    }
+  }
   if (!cart.find((d) => d.name === name)) {
-    cart.push({ name, recipe })
+    cart.push(item)
     uni.setStorageSync('cart', cart)
   }
   uni.showToast({ title: '已加入本次做饭', icon: 'success' })
