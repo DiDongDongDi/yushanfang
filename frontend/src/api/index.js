@@ -1,8 +1,8 @@
 import request from './request'
 
 // 认证
-export const sendCode = (phone) => request.post('/auth/send-code', { phone })
-export const login = (phone, code, nickname) => request.post('/auth/login', { phone, code, nickname })
+export const register = (data) => request.post('/auth/register', data)
+export const login = (username, password) => request.post('/auth/login', { username, password })
 export const wechatLogin = (code) => request.post('/auth/wechat-login', { code })
 
 // 用户

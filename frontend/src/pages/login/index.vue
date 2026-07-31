@@ -6,65 +6,63 @@
     </view>
     <view class="form">
       <view class="input-wrap">
-        <input v-model="phone" class="input" type="number" maxlength="11" placeholder="请输入手机号" />
+        <input v-model="username" class="input" type="text" maxlength="50" placeholder="请输入用户名（3-50位）" />
       </view>
-      <view class="code-row">
-        <view class="input-wrap code-input-wrap">
-          <input v-model="code" class="input" type="number" maxlength="6" placeholder="验证码" />
-        </view>
-        <button class="code-btn" :disabled="countdown > 0" @click="handleSendCode">
-          {{ countdown > 0 ? `${countdown}s` : '发送验证码' }}
-        </button>
+      <view class="input-wrap">
+        <input v-model="password" class="input" type="password" maxlength="100" placeholder="请输入密码（6位以上）" />
       </view>
-      <button class="login-btn" @click="handleLogin">登录 / 注册</button>
-      <text v-if="devCode" class="dev-code-tip">开发模式验证码：{{ devCode }}（正式环境将通过短信发送）</text>
+      <view class="input-wrap">
+        <input v-model="nickname" class="input" type="text" maxlength="50" placeholder="昵称（可选）" />
+      </view>
+      <button class="login-btn" @click="handleRegister">注册</button>
+      <button class="login-btn secondary" @click="handleLogin">登录</button>
+      <view class="toggle-mode" @click="isLoginMode = !isLoginMode">
+        <text>{{ isLoginMode ? '没有账号？去注册' : '已有账号？去登录' }}</text>
+      </view>
     </view>
   </view>
 </template>
 
 <script setup>
 import { ref } from 'vue'
-import { sendCode as sendCodeApi, login } from '@/api'
+import { register as registerApi, login as loginApi } from '@/api'
 
-const phone = ref('')
-const code = ref('')
-const countdown = ref(0)
-const devCode = ref('')  // 开发模式显示验证码
+const username = ref('')
+const password = ref('')
+const nickname = ref('')
+const isLoginMode = ref(true)  // true=登录模式, false=注册模式
 
-let timer = null
-
-async function handleSendCode() {
-  if (!/^1\d{10}$/.test(phone.value)) {
-    uni.showToast({ title: '请输入正确手机号', icon: 'none' })
+async function handleRegister() {
+  if (!username.value || !password.value) {
+    uni.showToast({ title: '请填写用户名和密码', icon: 'none' })
     return
   }
-  const res = await sendCodeApi(phone.value)
-  if (res.msg) {
-    // 开发模式：如果后端返回了验证码，显示出来
-    if (res.code) {
-      devCode.value = res.code
-      uni.showModal({
-        title: '开发模式',
-        content: `验证码是：${res.code}（正式环境将通过短信发送）`,
-        showCancel: false
-      })
-    } else {
-      uni.showToast({ title: '验证码已发送', icon: 'success' })
-    }
-    countdown.value = 60
-    timer = setInterval(() => {
-      countdown.value--
-      if (countdown.value <= 0) clearInterval(timer)
-    }, 1000)
+  if (username.value.length < 3) {
+    uni.showToast({ title: '用户名至少3位', icon: 'none' })
+    return
+  }
+  if (password.value.length < 6) {
+    uni.showToast({ title: '密码至少6位', icon: 'none' })
+    return
+  }
+  const res = await registerApi({
+    username: username.value,
+    password: password.value,
+    nickname: nickname.value || null
+  })
+  if (res.id) {
+    uni.showToast({ title: '注册成功，请登录', icon: 'success' })
+    isLoginMode.value = true
+    nickname.value = ''
   }
 }
 
 async function handleLogin() {
-  if (!phone.value || !code.value) {
-    uni.showToast({ title: '请填写完整', icon: 'none' })
+  if (!username.value || !password.value) {
+    uni.showToast({ title: '请填写用户名和密码', icon: 'none' })
     return
   }
-  const res = await login(phone.value, code.value)
+  const res = await loginApi(username.value, password.value)
   if (res.access_token) {
     uni.setStorageSync('token', res.access_token)
     uni.showToast({ title: '登录成功', icon: 'success' })
@@ -83,9 +81,7 @@ async function handleLogin() {
 .form { background: #fff; border-radius: 16rpx; padding: 40rpx; }
 .input-wrap { border: 2rpx solid #eee; border-radius: 12rpx; margin-bottom: 24rpx; }
 .input { height: 88rpx; line-height: 88rpx; padding: 0 24rpx; font-size: 28rpx; width: 100%; box-sizing: border-box; }
-.code-row { display: flex; gap: 16rpx; margin-bottom: 24rpx; align-items: center; }
-.code-input-wrap { flex: 1; margin-bottom: 0; }
-.code-btn { white-space: nowrap; background: #e74c3c; color: #fff; border-radius: 12rpx; font-size: 24rpx; height: 88rpx; line-height: 88rpx; padding: 0 30rpx; min-width: 180rpx; }
-.login-btn { background: #e74c3c; color: #fff; border-radius: 12rpx; height: 88rpx; line-height: 88rpx; font-size: 32rpx; margin-top: 40rpx; width: 100%; }
-.dev-code-tip { display: block; margin-top: 20rpx; color: #e74c3c; font-size: 24rpx; text-align: center; }
+.login-btn { background: #e74c3c; color: #fff; border-radius: 12rpx; height: 88rpx; line-height: 88rpx; font-size: 32rpx; margin-top: 24rpx; width: 100%; }
+.login-btn.secondary { background: #fff; color: #e74c3c; border: 2rpx solid #e74c3c; }
+.toggle-mode { text-align: center; margin-top: 30rpx; color: #999; font-size: 26rpx; }
 </style>
