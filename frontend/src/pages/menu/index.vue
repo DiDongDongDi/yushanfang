@@ -10,6 +10,10 @@
         <text class="section-title">🔥 AI 推荐</text>
         <button v-if="recommendList.length" class="refresh-btn" @click="getRecommend" :loading="loading">🔄 刷新</button>
       </view>
+      <view class="preference-bar">
+        <input v-model="preference" class="preference-input" placeholder="今天想吃点什么？如：辣的、清淡、海鲜..." @confirm="getRecommend" />
+        <button class="recommend-btn" @click="getRecommend" :loading="loading">推荐</button>
+      </view>
       <view v-if="loading" class="loading-hint">
         <text>✨ 正在为你推荐...</text>
       </view>
@@ -49,6 +53,7 @@ import { ref, onMounted } from 'vue'
 import { aiRecommend, aiRecommendStream, getDishes } from '@/api'
 
 const keyword = ref('')
+const preference = ref('')
 const recommendList = ref([])
 const loading = ref(false)
 const recommendRawText = ref('')
@@ -59,8 +64,9 @@ async function getRecommend() {
   loading.value = true
   recommendList.value = []
   recommendRawText.value = ''
+  const pref = preference.value.trim()
   // #ifdef H5
-  aiRecommendStream('',
+  aiRecommendStream(pref,
     (chunk) => {
       recommendRawText.value += chunk
       const parsed = parseRecommend(recommendRawText.value)
@@ -85,7 +91,7 @@ async function getRecommend() {
   })
   // #endif
   // #ifndef H5
-  const res = await aiRecommend('')
+  const res = await aiRecommend(pref)
   if (res.dishes) {
     recommendList.value = res.dishes
   } else if (res.result) {
@@ -148,6 +154,9 @@ onMounted(() => {
 .section-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20rpx; }
 .section-title { font-size: 32rpx; font-weight: bold; }
 .refresh-btn { background: #fff; color: #e74c3c; border: 2rpx solid #e74c3c; border-radius: 30rpx; font-size: 24rpx; height: 56rpx; line-height: 52rpx; padding: 0 24rpx; }
+.preference-bar { display: flex; gap: 16rpx; margin-bottom: 20rpx; }
+.preference-input { flex: 1; border: 2rpx solid #eee; border-radius: 12rpx; padding: 16rpx 20rpx; font-size: 26rpx; }
+.recommend-btn { background: #e74c3c; color: #fff; border-radius: 12rpx; font-size: 26rpx; height: 76rpx; display: flex; align-items: center; justify-content: center; padding: 0 30rpx; flex-shrink: 0; }
 .recommend-item { display: flex; justify-content: space-between; align-items: center; padding: 20rpx 0; border-bottom: 1rpx solid #f5f5f5; }
 .recommend-item .name { font-weight: bold; }
 .recommend-item .desc { color: #999; font-size: 24rpx; max-width: 400rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

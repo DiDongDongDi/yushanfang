@@ -5,6 +5,27 @@ from app.core.config import settings
 from app.models.ai_config import AIConfig
 
 
+def extract_json(text: str):
+    """从 AI 返回文本中提取 JSON（处理 markdown 代码块等干扰）"""
+    if not text:
+        return None
+    # 去除 markdown 代码块标记
+    text = re.sub(r"```(?:json)?", "", text).strip()
+    # 尝试直接解析
+    try:
+        return json.loads(text)
+    except Exception:
+        pass
+    # 尝试提取第一个 JSON 对象
+    json_match = re.search(r"\{.*\}", text, re.DOTALL)
+    if json_match:
+        try:
+            return json.loads(json_match.group())
+        except Exception:
+            pass
+    return None
+
+
 def get_ai_config(db=None):
     """获取 AI 配置：优先数据库，其次环境变量"""
     if db:
@@ -48,9 +69,9 @@ def ai_chat(prompt: str, db=None) -> dict:
         resp.raise_for_status()
         content = resp.json()["choices"][0]["message"]["content"]
         # 尝试解析 JSON
-        json_match = re.search(r"\{.*\}", content, re.DOTALL)
-        if json_match:
-            return json.loads(json_match.group())
+        result = extract_json(content)
+        if result:
+            return result
         return {"result": content}
     except Exception as e:
         return {"error": str(e)}

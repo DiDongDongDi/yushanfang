@@ -7,6 +7,7 @@ from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.models.user import User
 import json
+from app.services.ai_service import extract_json
 
 router = APIRouter(prefix="/ai", tags=["AI"])
 
@@ -22,6 +23,28 @@ class GenerateRecipeRequest(BaseModel):
 class OptimizePlanRequest(BaseModel):
     dishes: list[str]
     plans: list[dict]
+
+
+def stream_json_response(prompt: str, db):
+    """通用流式 JSON 响应生成器"""
+    from app.services.ai_service import ai_chat_stream
+
+    def generate():
+        yield "data: {\"type\":\"start\"}\n\n"
+        full_content = ""
+        for chunk in ai_chat_stream(prompt, db=db):
+            full_content += chunk
+            escaped = chunk.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")
+            yield f"data: {{\"type\":\"chunk\",\"content\":\"{escaped}\"}}\n\n"
+        result = extract_json(full_content)
+        if result:
+            result_json = json.dumps(result, ensure_ascii=False)
+            yield f"data: {{\"type\":\"done\",\"result\":{result_json}}}\n\n"
+        else:
+            escaped = full_content.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")
+            yield f"data: {{\"type\":\"done\",\"result\":{{\"result\":\"{escaped}\"}}}}\n\n"
+
+    return StreamingResponse(generate(), media_type="text/event-stream")
 
 
 def build_recommend_prompt(preference: str, db, user_id: int) -> str:
@@ -43,20 +66,34 @@ def build_recommend_prompt(preference: str, db, user_id: int) -> str:
                   11: "秋季", 12: "冬季"}
     season = season_map[month]
 
+    # 随机挑选一种推荐风格/主题，增加每次推荐的变化
+    styles = [
+        "家常下饭", "清爽健康", "重口味过瘾", "清淡养生",
+        "快手省时", "营养均衡", "创意融合", "传统经典",
+        "酸甜开胃", "鲜香浓郁", "素菜为主", "汤汤水水"
+    ]
+    style = random.choice(styles)
+
+    # 随机限定菜系方向
+    cuisines = ["川菜", "粤菜", "湘菜", "江浙菜", "东北菜", "鲁菜", "本帮菜", "闽菜", "家常菜", "融合菜"]
+    cuisine = random.choice(cuisines)
+
     prompt = f"""你是一个专业的美食推荐专家，正在为用户推荐今日菜品。
 
 当前季节：{season}（现在是{month}月）
 用户偏好：{preference or "无特别偏好"}
+本次推荐主题：{style}（偏{cuisine}风味）
 
-用户之前做过/吃过的菜（请避免重复推荐）：{history_str}
+用户之前做过/吃过的菜（请务必避免重复推荐）：{history_str}
 
 要求：
-1. 推荐3道适合当前季节的、与历史菜品尽量不重复的菜
-2. 三道菜尽量涵盖不同口味和类型（如荤菜、素菜、汤类、主食等搭配）
-3. 推荐的菜要新颖、多样，不要总是推荐番茄炒蛋、红烧肉这类最家常的菜
-4. 每道菜用一句话简洁描述特点
+1. 推荐3道适合当前季节、与历史菜品完全不重复的菜
+2. 三道菜尽量涵盖不同烹饪方式和食材（如：一道热菜、一道素菜/凉菜、一道汤或主食）
+3. 推荐的菜要新颖多样、有创意，绝对不要推荐最常见的家常菜（如番茄炒蛋、土豆丝、红烧肉、蛋炒饭这类）
+4. 要符合"本次推荐主题"的风格
+5. 每道菜用一句话简洁描述特点
 
-随机种子：{seed}（请基于此种子，尽量给出不同的推荐组合）
+随机种子：{seed}（请基于此种子生成与此前不同的推荐组合）
 
 返回JSON格式：{{"dishes": [{{"name": "菜名", "desc": "描述"}}]}}"""
     return prompt
@@ -81,21 +118,7 @@ def ai_generate_recipe_stream(req: GenerateRecipeRequest, db: Session = Depends(
   "cook_steps": "烹饪做法，每行一个步骤，每个步骤带预计时间（分钟）"
 }}"""
 
-    def generate():
-        yield "data: {\"type\":\"start\"}\n\n"
-        full_content = ""
-        for chunk in ai_chat_stream(prompt, db=db):
-            full_content += chunk
-            escaped = chunk.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")
-            yield f"data: {{\"type\":\"chunk\",\"content\":\"{escaped}\"}}\n\n"
-        import re
-        json_match = re.search(r"\{.*\}", full_content, re.DOTALL)
-        if json_match:
-            yield f"data: {{\"type\":\"done\",\"result\":{json_match.group()}}}\n\n"
-        else:
-            yield f"data: {{\"type\":\"done\",\"result\":{{\"result\":\"{full_content}\"}}}}\n\n"
-
-    return StreamingResponse(generate(), media_type="text/event-stream")
+    return stream_json_response(prompt, db)
 
 
 @router.post("/recommend/stream", summary="AI推荐今日菜品（流式）")
@@ -103,21 +126,7 @@ def ai_recommend_stream(req: RecommendRequest, db: Session = Depends(get_db), cu
     from app.services.ai_service import ai_chat_stream
     prompt = build_recommend_prompt(req.preference, db, current_user.id)
 
-    def generate():
-        yield "data: {\"type\":\"start\"}\n\n"
-        full_content = ""
-        for chunk in ai_chat_stream(prompt, db=db):
-            full_content += chunk
-            escaped = chunk.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")
-            yield f"data: {{\"type\":\"chunk\",\"content\":\"{escaped}\"}}\n\n"
-        import re
-        json_match = re.search(r"\{.*\}", full_content, re.DOTALL)
-        if json_match:
-            yield f"data: {{\"type\":\"done\",\"result\":{json_match.group()}}}\n\n"
-        else:
-            yield f"data: {{\"type\":\"done\",\"result\":{{\"result\":\"{full_content}\"}}}}\n\n"
-
-    return StreamingResponse(generate(), media_type="text/event-stream")
+    return stream_json_response(prompt, db)
 
 
 @router.post("/optimize-plan", summary="AI整合多菜流程")
@@ -152,20 +161,4 @@ def ai_optimize_plan_stream(req: OptimizePlanRequest, db: Session = Depends(get_
   "cook_steps": "整合优化后的烹饪步骤（带时间）"
 }}"""
 
-    def generate():
-        yield "data: {\"type\":\"start\"}\n\n"
-        full_content = ""
-        for chunk in ai_chat_stream(prompt, db=db):
-            full_content += chunk
-            # 发送增量内容
-            escaped = chunk.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")
-            yield f"data: {{\"type\":\"chunk\",\"content\":\"{escaped}\"}}\n\n"
-        # 尝试解析最终 JSON
-        import re
-        json_match = re.search(r"\{.*\}", full_content, re.DOTALL)
-        if json_match:
-            yield f"data: {{\"type\":\"done\",\"result\":{json_match.group()}}}\n\n"
-        else:
-            yield f"data: {{\"type\":\"done\",\"result\":{{\"result\":\"{full_content}\"}}}}\n\n"
-
-    return StreamingResponse(generate(), media_type="text/event-stream")
+    return stream_json_response(prompt, db)
