@@ -30,7 +30,7 @@ function formatDate(dateStr) {
 }
 
 function goRecord(id) {
-  uni.navigateTo({ url: `/pages/cooking/history?recordId=${id}` })
+  uni.navigateTo({ url: `/pages/cooking/record?id=${id}` })
 }
 
 onMounted(async () => {

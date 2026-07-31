@@ -6,7 +6,10 @@
     </view>
 
     <view class="section">
-      <view class="section-title">🔥 AI 推荐</view>
+      <view class="section-title-row">
+        <text class="section-title">🔥 AI 推荐</text>
+        <button v-if="recommendList.length" class="refresh-btn" @click="getRecommend" :loading="loading">🔄 刷新</button>
+      </view>
       <view v-if="loading" class="loading-hint">
         <text>✨ 正在为你推荐...</text>
       </view>
@@ -132,6 +135,7 @@ function removeDish(idx) {
 
 onMounted(() => {
   loadDishes()
+  getRecommend()
 })
 </script>
 
@@ -141,7 +145,9 @@ onMounted(() => {
 .search-input { flex: 1; border: 2rpx solid #eee; border-radius: 12rpx; padding: 20rpx; }
 .search-btn { background: #e74c3c; color: #fff; border-radius: 12rpx; font-size: 28rpx; height: 88rpx; display: flex; align-items: center; justify-content: center; padding: 0 30rpx; }
 .section { background: #fff; border-radius: 16rpx; padding: 30rpx; margin-bottom: 24rpx; }
-.section-title { font-size: 32rpx; font-weight: bold; margin-bottom: 20rpx; }
+.section-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20rpx; }
+.section-title { font-size: 32rpx; font-weight: bold; }
+.refresh-btn { background: #fff; color: #e74c3c; border: 2rpx solid #e74c3c; border-radius: 30rpx; font-size: 24rpx; height: 56rpx; line-height: 52rpx; padding: 0 24rpx; }
 .recommend-item { display: flex; justify-content: space-between; align-items: center; padding: 20rpx 0; border-bottom: 1rpx solid #f5f5f5; }
 .recommend-item .name { font-weight: bold; }
 .recommend-item .desc { color: #999; font-size: 24rpx; max-width: 400rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

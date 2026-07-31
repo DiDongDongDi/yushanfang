@@ -31,6 +31,12 @@
       }
     },
     {
+      "path": "pages/cooking/record",
+      "style": {
+        "navigationBarTitleText": "烹饪记录详情"
+      }
+    },
+    {
       "path": "pages/profile/index",
       "style": {
         "navigationBarTitleText": "个人中心"
