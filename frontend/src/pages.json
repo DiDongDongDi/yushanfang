@@ -1,21 +1,15 @@
 {
   "pages": [
     {
-      "path": "pages/index/index",
+      "path": "pages/menu/index",
       "style": {
-        "navigationBarTitleText": "御膳房"
+        "navigationBarTitleText": "点菜"
       }
     },
     {
       "path": "pages/login/index",
       "style": {
         "navigationBarTitleText": "登录"
-      }
-    },
-    {
-      "path": "pages/menu/index",
-      "style": {
-        "navigationBarTitleText": "点菜"
       }
     },
     {
@@ -49,10 +43,6 @@
     "backgroundColor": "#fff",
     "fontSize": "14px",
     "list": [
-      {
-        "pagePath": "pages/index/index",
-        "text": "首页"
-      },
       {
         "pagePath": "pages/menu/index",
         "text": "点菜"

@@ -10,18 +10,6 @@
       <text v-if="!token" class="login-hint" @click="goLogin">点击登录</text>
     </view>
 
-    <view class="section">
-      <view class="section-title">📜 我的历史菜品</view>
-      <view v-for="dish in dishes" :key="dish.id" class="dish-item" @click="goDish(dish.id)">
-        <view class="dish-info">
-          <image v-if="dish.image" :src="dish.image" class="dish-thumb" mode="aspectFill" />
-          <text class="name">{{ dish.name }}</text>
-        </view>
-        <text class="arrow">›</text>
-      </view>
-      <text v-if="!dishes.length" class="empty">暂无历史菜品</text>
-    </view>
-
     <view class="menu-list">
       <view class="menu-item" @click="goCookingHistory">
         <text>🍳 烹饪记录</text>
@@ -38,17 +26,15 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { getUserInfo, updateUserInfo, getDishes, uploadAvatar } from '@/api'
+import { getUserInfo, updateUserInfo, uploadAvatar } from '@/api'
 
 const token = ref('')
 const user = ref({})
-const dishes = ref([])
 
 onShow(() => {
   token.value = uni.getStorageSync('token')
   if (token.value) {
     loadUser()
-    loadDishes()
   }
 })
 
@@ -60,20 +46,8 @@ async function loadUser() {
   }
 }
 
-async function loadDishes() {
-  try {
-    dishes.value = await getDishes()
-  } catch (e) {
-    dishes.value = []
-  }
-}
-
 function goLogin() {
   uni.navigateTo({ url: '/pages/login/index' })
-}
-
-function goDish(id) {
-  uni.navigateTo({ url: `/pages/dish/index?id=${id}` })
 }
 
 function goCookingHistory() {
@@ -84,7 +58,6 @@ function logout() {
   uni.removeStorageSync('token')
   token.value = ''
   user.value = {}
-  dishes.value = []
   uni.showToast({ title: '已退出', icon: 'success' })
 }
 

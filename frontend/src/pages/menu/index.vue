@@ -24,7 +24,6 @@
       <view v-for="dish in dishes" :key="dish.id" class="dish-item" @click="goDish(dish.id)">
         <view class="dish-info">
           <text class="name">{{ dish.name }}</text>
-          <text v-if="dish.recipe_json" class="desc">已有菜谱 ✓</text>
         </view>
       </view>
       <text v-if="!dishes.length" class="empty">暂无历史菜品</text>
