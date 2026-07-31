@@ -47,6 +47,7 @@
     "color": "#999",
     "selectedColor": "#e74c3c",
     "backgroundColor": "#fff",
+    "fontSize": "14px",
     "list": [
       {
         "pagePath": "pages/index/index",

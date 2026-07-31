@@ -20,4 +20,9 @@ button {
 button::after {
   border: none;
 }
+
+/* H5 端 tabBar 文字大小调整 */
+.uni-tabbar__label {
+  font-size: 14px !important;
+}
 </style>

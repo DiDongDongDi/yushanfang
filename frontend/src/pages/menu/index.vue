@@ -18,12 +18,12 @@
 
     <view class="section">
       <view class="section-title">📜 我的历史菜品</view>
-      <view v-for="dish in dishes" :key="dish.id" class="dish-item" @click="addDish(dish.name)">
+      <view v-for="dish in dishes" :key="dish.id" class="dish-item" @click="goDish(dish.id)">
         <view class="dish-info">
           <text class="name">{{ dish.name }}</text>
           <text v-if="dish.description" class="desc">{{ dish.description }}</text>
         </view>
-        <text class="add-btn">＋</text>
+        <text class="add-btn" @click.stop="addDish(dish.name)">＋</text>
       </view>
       <text v-if="!dishes.length" class="empty">暂无历史菜品</text>
     </view>
@@ -78,6 +78,10 @@ function addDish(name) {
   cart.value.push({ name })
   uni.setStorageSync('cart', cart.value)
   uni.showToast({ title: `已添加「${name}」`, icon: 'success' })
+}
+
+function goDish(id) {
+  uni.navigateTo({ url: `/pages/dish/index?id=${id}` })
 }
 
 function goCooking() {
